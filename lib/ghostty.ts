@@ -619,6 +619,7 @@ export class GhosttyTerminal {
         width: u8[cellOffset + 11],
         hyperlink_id: view.getUint16(cellOffset + 12, true),
         grapheme_len: u8[cellOffset + 14],
+        underline_style: u8[cellOffset + 15],
       });
     }
 
@@ -787,6 +788,7 @@ export class GhosttyTerminal {
           width: 1,
           hyperlink_id: 0,
           grapheme_len: 0,
+          underline_style: 0,
         });
       }
     }
@@ -811,6 +813,7 @@ export class GhosttyTerminal {
       cell.width = u8[offset + 11];
       cell.hyperlink_id = view.getUint16(offset + 12, true);
       cell.grapheme_len = u8[offset + 14]; // grapheme_len is at byte 14
+      cell.underline_style = u8[offset + 15]; // underline_style is at byte 15
     }
   }
 
@@ -854,6 +857,30 @@ export class GhosttyTerminal {
     const codepoints = this.getGrapheme(row, col);
     if (!codepoints || codepoints.length === 0) return ' ';
     return String.fromCodePoint(...codepoints);
+  }
+
+  /**
+   * Get the underline color for a cell at (row, col) as 0xRRGGBB.
+   * Returns null if no underline color is set (use text color instead).
+   * Requires rebuilt WASM with underline color support.
+   */
+  getUnderlineColor(row: number, col: number): { r: number; g: number; b: number } | null {
+    const exportsAny = this.exports as Record<string, unknown>;
+    if (typeof exportsAny.ghostty_render_state_get_underline_color !== 'function') {
+      return null;
+    }
+    const getUlColor = exportsAny.ghostty_render_state_get_underline_color as (
+      h: TerminalHandle,
+      row: number,
+      col: number
+    ) => number;
+    const color = getUlColor(this.handle, row, col);
+    if (color === 0) return null;
+    return {
+      r: (color >> 16) & 0xff,
+      g: (color >> 8) & 0xff,
+      b: color & 0xff,
+    };
   }
 
   /**

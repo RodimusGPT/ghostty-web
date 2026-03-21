@@ -86,6 +86,8 @@ export class Terminal implements ITerminalCore {
   private scrollEmitter = new EventEmitter<number>();
   private renderEmitter = new EventEmitter<{ start: number; end: number }>();
   private cursorMoveEmitter = new EventEmitter<void>();
+  private lineFeedEmitter = new EventEmitter<void>();
+  private writeParsedEmitter = new EventEmitter<void>();
   // Public event accessors (xterm.js compatibility)
   public readonly onData: IEvent<string> = this.dataEmitter.event;
   public readonly onResize: IEvent<{ cols: number; rows: number }> = this.resizeEmitter.event;
@@ -96,6 +98,8 @@ export class Terminal implements ITerminalCore {
   public readonly onScroll: IEvent<number> = this.scrollEmitter.event;
   public readonly onRender: IEvent<{ start: number; end: number }> = this.renderEmitter.event;
   public readonly onCursorMove: IEvent<void> = this.cursorMoveEmitter.event;
+  public readonly onLineFeed: IEvent<void> = this.lineFeedEmitter.event;
+  public readonly onWriteParsed: IEvent<void> = this.writeParsedEmitter.event;
 
   // Lifecycle state
   private isOpen = false;
@@ -147,9 +151,14 @@ export class Terminal implements ITerminalCore {
       scrollback: options.scrollback ?? 10000,
       fontSize: options.fontSize ?? 15,
       fontFamily: options.fontFamily ?? 'monospace',
+      fontWeight: options.fontWeight ?? 'normal',
+      fontWeightBold: options.fontWeightBold ?? 'bold',
+      lineHeight: options.lineHeight ?? 1.0,
+      letterSpacing: options.letterSpacing ?? 0,
       allowTransparency: options.allowTransparency ?? false,
       convertEol: options.convertEol ?? false,
       disableStdin: options.disableStdin ?? false,
+      macOptionIsMeta: options.macOptionIsMeta ?? false,
       smoothScrollDuration: options.smoothScrollDuration ?? 100, // Default: 100ms smooth scroll
     };
 
@@ -217,6 +226,12 @@ export class Terminal implements ITerminalCore {
         if (this.renderer) {
           this.renderer.setFontFamily(this.options.fontFamily);
           this.handleFontChange();
+        }
+        break;
+
+      case 'macOptionIsMeta':
+        if (this.inputHandler) {
+          this.inputHandler.setMacOptionIsMeta(!!newValue);
         }
         break;
 
@@ -420,6 +435,10 @@ export class Terminal implements ITerminalCore {
       this.renderer = new CanvasRenderer(this.canvas, {
         fontSize: this.options.fontSize,
         fontFamily: this.options.fontFamily,
+        fontWeight: this.options.fontWeight,
+        fontWeightBold: this.options.fontWeightBold,
+        lineHeight: this.options.lineHeight,
+        letterSpacing: this.options.letterSpacing,
         cursorStyle: this.options.cursorStyle,
         cursorBlink: this.options.cursorBlink,
         theme: this.options.theme,
@@ -479,6 +498,11 @@ export class Terminal implements ITerminalCore {
         this.textarea,
         mouseConfig
       );
+
+      // Apply macOptionIsMeta if set
+      if (this.options.macOptionIsMeta) {
+        this.inputHandler.setMacOptionIsMeta(true);
+      }
 
       // Create selection manager (pass textarea for context menu positioning)
       this.selectionManager = new SelectionManager(
@@ -564,12 +588,18 @@ export class Terminal implements ITerminalCore {
     // These need to be sent back to the PTY via onData
     this.processTerminalResponses();
 
-    // Check for bell character (BEL, \x07)
-    // WASM doesn't expose bell events, so we detect it in the data stream
-    if (typeof data === 'string' && data.includes('\x07')) {
-      this.bellEmitter.fire();
-    } else if (data instanceof Uint8Array && data.includes(0x07)) {
-      this.bellEmitter.fire();
+    // Check for bell character (BEL, \x07) and linefeed (\n, 0x0a)
+    // WASM doesn't expose these events, so we detect them in the data stream
+    if (typeof data === 'string') {
+      if (data.includes('\x07')) this.bellEmitter.fire();
+      for (let i = 0; i < data.length; i++) {
+        if (data.charCodeAt(i) === 0x0a) this.lineFeedEmitter.fire();
+      }
+    } else if (data instanceof Uint8Array) {
+      if (data.includes(0x07)) this.bellEmitter.fire();
+      for (let i = 0; i < data.length; i++) {
+        if (data[i] === 0x0a) this.lineFeedEmitter.fire();
+      }
     }
 
     // Invalidate link cache (content changed)
@@ -585,6 +615,9 @@ export class Terminal implements ITerminalCore {
     if (typeof data === 'string' && data.includes('\x1b]')) {
       this.checkForTitleChange(data);
     }
+
+    // Fire onWriteParsed after all parsing is complete
+    this.writeParsedEmitter.fire();
 
     // Call callback if provided
     if (callback) {
