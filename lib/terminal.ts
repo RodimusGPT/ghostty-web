@@ -1163,9 +1163,17 @@ export class Terminal implements ITerminalCore {
         // 3. Always calls clearDirty() at the end
         this.renderer!.render(this.wasmTerm!, false, this.viewportY, this, this.scrollbarOpacity);
 
-        // Check for cursor movement (Phase 2: onCursorMove event)
+        // Check for cursor movement and cursor style/blink changes from WASM
         // Note: getCursor() reads from already-updated render state (from render() above)
         const cursor = this.wasmTerm!.getCursor();
+
+        // Sync WASM cursor style/blink to renderer (handles DECSCUSR changes from apps)
+        if (cursor.style !== this.renderer!.getCursorStyle()) {
+          this.renderer!.setCursorStyle(cursor.style);
+        }
+        if (cursor.blinking !== this.renderer!.getCursorBlink()) {
+          this.renderer!.setCursorBlink(cursor.blinking);
+        }
         if (cursor.y !== this.lastCursorY) {
           this.lastCursorY = cursor.y;
           this.cursorMoveEmitter.fire();

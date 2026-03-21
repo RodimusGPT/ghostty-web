@@ -7,9 +7,86 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { DEFAULT_THEME } from './renderer';
+import { CanvasRenderer, DEFAULT_THEME } from './renderer';
 
 describe('CanvasRenderer', () => {
+  describe('Cursor Style API', () => {
+    // Test the cursor style getter/setter round-trip (no DOM needed)
+    function createMinimalRenderer(
+      opts: { cursorStyle?: 'block' | 'underline' | 'bar'; cursorBlink?: boolean } = {}
+    ): CanvasRenderer {
+      // Create a renderer with a mock canvas element
+      const canvas = {
+        getContext: () => ({
+          measureText: () => ({
+            width: 8,
+            actualBoundingBoxAscent: 12,
+            actualBoundingBoxDescent: 2,
+          }),
+          font: '',
+          fillStyle: '',
+          strokeStyle: '',
+          textBaseline: '',
+          textAlign: '',
+          lineWidth: 0,
+          globalAlpha: 1,
+          fillRect: () => {},
+          clearRect: () => {},
+          fillText: () => {},
+          beginPath: () => {},
+          moveTo: () => {},
+          lineTo: () => {},
+          stroke: () => {},
+          save: () => {},
+          restore: () => {},
+          rect: () => {},
+          clip: () => {},
+          scale: () => {},
+        }),
+        width: 640,
+        height: 480,
+        style: { width: '', height: '' },
+      } as unknown as HTMLCanvasElement;
+
+      return new CanvasRenderer(canvas, {
+        cursorStyle: opts.cursorStyle ?? 'block',
+        cursorBlink: opts.cursorBlink ?? false,
+      });
+    }
+
+    test('getCursorStyle returns initial style', () => {
+      const r = createMinimalRenderer({ cursorStyle: 'bar' });
+      expect(r.getCursorStyle()).toBe('bar');
+    });
+
+    test('setCursorStyle updates getCursorStyle', () => {
+      const r = createMinimalRenderer({ cursorStyle: 'block' });
+      expect(r.getCursorStyle()).toBe('block');
+
+      r.setCursorStyle('underline');
+      expect(r.getCursorStyle()).toBe('underline');
+
+      r.setCursorStyle('bar');
+      expect(r.getCursorStyle()).toBe('bar');
+    });
+
+    test('getCursorBlink returns initial blink state', () => {
+      const r = createMinimalRenderer({ cursorBlink: false });
+      expect(r.getCursorBlink()).toBe(false);
+    });
+
+    test('setCursorBlink updates getCursorBlink', () => {
+      const r = createMinimalRenderer({ cursorBlink: false });
+      expect(r.getCursorBlink()).toBe(false);
+
+      r.setCursorBlink(true);
+      expect(r.getCursorBlink()).toBe(true);
+
+      r.setCursorBlink(false);
+      expect(r.getCursorBlink()).toBe(false);
+    });
+  });
+
   describe('Default Theme', () => {
     test('has all required ANSI colors', () => {
       expect(DEFAULT_THEME.black).toBe('#000000');

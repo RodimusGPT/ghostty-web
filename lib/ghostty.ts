@@ -393,14 +393,39 @@ export class GhosttyTerminal {
     // Call update() to ensure render state is fresh.
     // This is safe to call multiple times - dirty state persists until markClean().
     this.update();
+
+    // Read cursor style from WASM if available (requires rebuilt WASM with cursor style support).
+    // These exports are optional — older WASM binaries won't have them.
+    const exportsAny = this.exports as Record<string, unknown>;
+
+    let style: 'block' | 'underline' | 'bar' = 'block';
+    if (typeof exportsAny.ghostty_render_state_get_cursor_style === 'function') {
+      const getCursorStyle = exportsAny.ghostty_render_state_get_cursor_style as (
+        h: TerminalHandle
+      ) => number;
+      const rawStyle = getCursorStyle(this.handle);
+      // Ghostty CursorStyle enum: 0=block, 1=bar, 2=underline
+      if (rawStyle === 1) style = 'bar';
+      else if (rawStyle === 2) style = 'underline';
+    }
+
+    // Read cursor blinking from WASM if available
+    let blinking = false;
+    if (typeof exportsAny.ghostty_render_state_get_cursor_blinking === 'function') {
+      const getCursorBlinking = exportsAny.ghostty_render_state_get_cursor_blinking as (
+        h: TerminalHandle
+      ) => boolean;
+      blinking = getCursorBlinking(this.handle);
+    }
+
     return {
       x: this.exports.ghostty_render_state_get_cursor_x(this.handle),
       y: this.exports.ghostty_render_state_get_cursor_y(this.handle),
       viewportX: this.exports.ghostty_render_state_get_cursor_x(this.handle),
       viewportY: this.exports.ghostty_render_state_get_cursor_y(this.handle),
       visible: this.exports.ghostty_render_state_get_cursor_visible(this.handle),
-      blinking: false, // TODO: Add blinking support
-      style: 'block', // TODO: Add style support
+      blinking,
+      style,
     };
   }
 
