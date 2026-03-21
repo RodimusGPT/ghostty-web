@@ -450,7 +450,7 @@ new file mode 100644
 index 000000000..73ae2e6fa
 --- /dev/null
 +++ b/src/terminal/c/terminal.zig
-@@ -0,0 +1,1142 @@
+@@ -0,0 +1,1141 @@
 +//! C API wrapper for Terminal
 +//!
 +//! This provides a minimal, high-performance interface to Ghostty's Terminal
@@ -544,13 +544,11 @@ index 000000000..73ae2e6fa
 +                const blink = switch (value) {
 +                    .default, .steady_block, .steady_bar, .steady_underline => false,
 +                    .blinking_block, .blinking_bar, .blinking_underline => true,
-+                    else => false,
 +                };
 +                const style: @import("../Screen.zig").CursorStyle = switch (value) {
 +                    .default, .blinking_block, .steady_block => .block,
 +                    .blinking_bar, .steady_bar => .bar,
 +                    .blinking_underline, .steady_underline => .underline,
-+                    else => .block,
 +                };
 +                self.terminal.modes.set(.cursor_blinking, blink);
 +                self.terminal.screens.active.cursor.cursor_style = style;
@@ -1011,6 +1009,7 @@ index 000000000..73ae2e6fa
 +        .block => 0,
 +        .bar => 1,
 +        .underline => 2,
++        else => 0, // default to block for unknown styles
 +    };
 +}
 +
