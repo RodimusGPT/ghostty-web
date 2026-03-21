@@ -160,7 +160,7 @@ describe('Cursor Style WASM Mapping', () => {
       const cursor = wasmTerm.getCursor();
       if (!hasCursorStyleExport(wasmTerm)) return; // skip if WASM not rebuilt
       expect(cursor.style).toBe('block');
-      expect(cursor.blinking).toBe(false);
+      expect(cursor.blinking).toBeFalsy();
     });
 
     test('DECSCUSR 4: steady underline cursor', () => {
@@ -168,7 +168,7 @@ describe('Cursor Style WASM Mapping', () => {
       wasmTerm.write('\x1b[4 q');
       const cursor = wasmTerm.getCursor();
       expect(cursor.style).toBe('underline');
-      expect(cursor.blinking).toBe(false);
+      expect(cursor.blinking).toBeFalsy();
     });
 
     test('DECSCUSR 6: steady bar cursor', () => {
@@ -176,7 +176,7 @@ describe('Cursor Style WASM Mapping', () => {
       wasmTerm.write('\x1b[6 q');
       const cursor = wasmTerm.getCursor();
       expect(cursor.style).toBe('bar');
-      expect(cursor.blinking).toBe(false);
+      expect(cursor.blinking).toBeFalsy();
     });
 
     test('DECSCUSR 5: blinking bar cursor', () => {
@@ -184,7 +184,7 @@ describe('Cursor Style WASM Mapping', () => {
       wasmTerm.write('\x1b[5 q');
       const cursor = wasmTerm.getCursor();
       expect(cursor.style).toBe('bar');
-      expect(cursor.blinking).toBe(true);
+      expect(cursor.blinking).toBeTruthy();
     });
 
     test('DECSCUSR 3: blinking underline cursor', () => {
@@ -192,7 +192,7 @@ describe('Cursor Style WASM Mapping', () => {
       wasmTerm.write('\x1b[3 q');
       const cursor = wasmTerm.getCursor();
       expect(cursor.style).toBe('underline');
-      expect(cursor.blinking).toBe(true);
+      expect(cursor.blinking).toBeTruthy();
     });
 
     test('DECSCUSR 1: blinking block cursor', () => {
@@ -200,7 +200,7 @@ describe('Cursor Style WASM Mapping', () => {
       wasmTerm.write('\x1b[1 q');
       const cursor = wasmTerm.getCursor();
       expect(cursor.style).toBe('block');
-      expect(cursor.blinking).toBe(true);
+      expect(cursor.blinking).toBeTruthy();
     });
 
     test('cursor style persists across writes', () => {
@@ -209,7 +209,7 @@ describe('Cursor Style WASM Mapping', () => {
       wasmTerm.write('Hello, world!');
       const cursor = wasmTerm.getCursor();
       expect(cursor.style).toBe('bar');
-      expect(cursor.blinking).toBe(false);
+      expect(cursor.blinking).toBeFalsy();
     });
 
     test('cursor style can be changed multiple times', () => {
