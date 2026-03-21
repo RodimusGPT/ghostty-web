@@ -4,6 +4,19 @@
 
 import type { Ghostty } from './ghostty';
 
+export type FontWeight =
+  | 'normal'
+  | 'bold'
+  | '100'
+  | '200'
+  | '300'
+  | '400'
+  | '500'
+  | '600'
+  | '700'
+  | '800'
+  | '900';
+
 export interface ITerminalOptions {
   cols?: number; // Default: 80
   rows?: number; // Default: 24
@@ -13,11 +26,18 @@ export interface ITerminalOptions {
   scrollback?: number; // Default: 1000
   fontSize?: number; // Default: 15
   fontFamily?: string; // Default: 'monospace'
+  fontWeight?: FontWeight; // Default: 'normal'
+  fontWeightBold?: FontWeight; // Default: 'bold'
+  lineHeight?: number; // Line height multiplier (default: 1.0)
+  letterSpacing?: number; // Extra horizontal pixels between characters (default: 0)
   allowTransparency?: boolean;
 
   // Phase 1 additions
   convertEol?: boolean; // Convert \n to \r\n (default: false)
   disableStdin?: boolean; // Disable keyboard input (default: false)
+
+  // Mac-specific options
+  macOptionIsMeta?: boolean; // Treat Option key as Meta/Alt on macOS (default: false)
 
   // Scrolling options
   smoothScrollDuration?: number; // Duration in ms for smooth scroll animation (default: 100, 0 = instant)

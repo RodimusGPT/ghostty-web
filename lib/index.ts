@@ -59,6 +59,7 @@ export { Terminal } from './terminal';
 
 // xterm.js-compatible interfaces
 export type {
+  FontWeight,
   ITerminalOptions,
   ITheme,
   ITerminalAddon,

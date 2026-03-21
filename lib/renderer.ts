@@ -10,7 +10,7 @@
  * - Dirty line optimization for 60 FPS
  */
 
-import type { ITheme } from './interfaces';
+import type { FontWeight, ITheme } from './interfaces';
 import type { SelectionManager } from './selection-manager';
 import type { GhosttyCell, ILink } from './types';
 import { CellFlags } from './types';
@@ -30,6 +30,8 @@ export interface IRenderable {
    * For simple cells, returns the single character.
    */
   getGraphemeString?(row: number, col: number): string;
+  /** Get underline color for a cell. Returns null to use text color. */
+  getUnderlineColor?(row: number, col: number): { r: number; g: number; b: number } | null;
 }
 
 export interface IScrollbackProvider {
@@ -44,6 +46,10 @@ export interface IScrollbackProvider {
 export interface RendererOptions {
   fontSize?: number; // Default: 15
   fontFamily?: string; // Default: 'monospace'
+  fontWeight?: FontWeight; // Default: 'normal'
+  fontWeightBold?: FontWeight; // Default: 'bold'
+  lineHeight?: number; // Line height multiplier (default: 1.0)
+  letterSpacing?: number; // Extra horizontal pixels between characters (default: 0)
   cursorStyle?: 'block' | 'underline' | 'bar'; // Default: 'block'
   cursorBlink?: boolean; // Default: false
   theme?: ITheme;
@@ -96,6 +102,10 @@ export class CanvasRenderer {
   private ctx: CanvasRenderingContext2D;
   private fontSize: number;
   private fontFamily: string;
+  private fontWeight: FontWeight;
+  private fontWeightBold: FontWeight;
+  private lineHeight: number;
+  private letterSpacing: number;
   private cursorStyle: 'block' | 'underline' | 'bar';
   private cursorBlink: boolean;
   private theme: Required<ITheme>;
@@ -149,6 +159,10 @@ export class CanvasRenderer {
     // Apply options
     this.fontSize = options.fontSize ?? 15;
     this.fontFamily = options.fontFamily ?? 'monospace';
+    this.fontWeight = options.fontWeight ?? 'normal';
+    this.fontWeightBold = options.fontWeightBold ?? 'bold';
+    this.lineHeight = options.lineHeight ?? 1.0;
+    this.letterSpacing = options.letterSpacing ?? 0;
     this.cursorStyle = options.cursorStyle ?? 'block';
     this.cursorBlink = options.cursorBlink ?? false;
     this.theme = { ...DEFAULT_THEME, ...options.theme };
@@ -193,11 +207,11 @@ export class CanvasRenderer {
     const ctx = canvas.getContext('2d')!;
 
     // Set font (use actual pixel size for accurate measurement)
-    ctx.font = `${this.fontSize}px ${this.fontFamily}`;
+    ctx.font = `${this.fontWeight} ${this.fontSize}px ${this.fontFamily}`;
 
     // Measure width using 'M' (typically widest character)
     const widthMetrics = ctx.measureText('M');
-    const width = Math.ceil(widthMetrics.width);
+    const baseWidth = Math.ceil(widthMetrics.width);
 
     // Measure height using ascent + descent with padding for glyph overflow
     const ascent = widthMetrics.actualBoundingBoxAscent || this.fontSize * 0.8;
@@ -205,8 +219,12 @@ export class CanvasRenderer {
 
     // Add 2px padding to height to account for glyphs that overflow (like 'f', 'd', 'g', 'p')
     // and anti-aliasing pixels
-    const height = Math.ceil(ascent + descent) + 2;
+    const baseHeight = Math.ceil(ascent + descent) + 2;
     const baseline = Math.ceil(ascent) + 1; // Offset baseline by half the padding
+
+    // Apply letterSpacing and lineHeight modifiers
+    const width = baseWidth + Math.round(this.letterSpacing);
+    const height = Math.round(baseHeight * this.lineHeight);
 
     return { width, height, baseline };
   }
@@ -605,8 +623,8 @@ export class CanvasRenderer {
     // Set text style
     let fontStyle = '';
     if (cell.flags & CellFlags.ITALIC) fontStyle += 'italic ';
-    if (cell.flags & CellFlags.BOLD) fontStyle += 'bold ';
-    this.ctx.font = `${fontStyle}${this.fontSize}px ${this.fontFamily}`;
+    const weight = cell.flags & CellFlags.BOLD ? this.fontWeightBold : this.fontWeight;
+    this.ctx.font = `${fontStyle}${weight} ${this.fontSize}px ${this.fontFamily}`;
 
     // Set text color - use override, selection foreground, or normal color
     if (colorOverride) {
@@ -654,15 +672,62 @@ export class CanvasRenderer {
       this.ctx.globalAlpha = 1.0;
     }
 
-    // Draw underline
+    // Draw underline (supports multiple styles: single, double, curly, dotted, dashed)
     if (cell.flags & CellFlags.UNDERLINE) {
       const underlineY = cellY + this.metrics.baseline + 2;
-      this.ctx.strokeStyle = this.ctx.fillStyle;
+      // Use underline color if available (SGR 58), otherwise use text color
+      const ulColor = this.currentBuffer?.getUnderlineColor?.(y, x);
+      this.ctx.strokeStyle = ulColor
+        ? this.rgbToCSS(ulColor.r, ulColor.g, ulColor.b)
+        : this.ctx.fillStyle;
       this.ctx.lineWidth = 1;
-      this.ctx.beginPath();
-      this.ctx.moveTo(cellX, underlineY);
-      this.ctx.lineTo(cellX + cellWidth, underlineY);
-      this.ctx.stroke();
+      // Use underline_style if available (0=none/single fallback, 1=single, 2=double, 3=curly, 4=dotted, 5=dashed)
+      const style = cell.underline_style || 1;
+      switch (style) {
+        case 2: // double
+          this.ctx.beginPath();
+          this.ctx.moveTo(cellX, underlineY - 1);
+          this.ctx.lineTo(cellX + cellWidth, underlineY - 1);
+          this.ctx.moveTo(cellX, underlineY + 1);
+          this.ctx.lineTo(cellX + cellWidth, underlineY + 1);
+          this.ctx.stroke();
+          break;
+        case 3: {
+          // curly/wavy
+          const amplitude = 2;
+          const wavelength = cellWidth / 2;
+          this.ctx.beginPath();
+          this.ctx.moveTo(cellX, underlineY);
+          for (let px = 0; px <= cellWidth; px++) {
+            const cy = underlineY + amplitude * Math.sin((px / wavelength) * Math.PI * 2);
+            this.ctx.lineTo(cellX + px, cy);
+          }
+          this.ctx.stroke();
+          break;
+        }
+        case 4: // dotted
+          this.ctx.setLineDash([1, 2]);
+          this.ctx.beginPath();
+          this.ctx.moveTo(cellX, underlineY);
+          this.ctx.lineTo(cellX + cellWidth, underlineY);
+          this.ctx.stroke();
+          this.ctx.setLineDash([]);
+          break;
+        case 5: // dashed
+          this.ctx.setLineDash([3, 2]);
+          this.ctx.beginPath();
+          this.ctx.moveTo(cellX, underlineY);
+          this.ctx.lineTo(cellX + cellWidth, underlineY);
+          this.ctx.stroke();
+          this.ctx.setLineDash([]);
+          break;
+        default: // single (1 or unknown)
+          this.ctx.beginPath();
+          this.ctx.moveTo(cellX, underlineY);
+          this.ctx.lineTo(cellX + cellWidth, underlineY);
+          this.ctx.stroke();
+          break;
+      }
     }
 
     // Draw strikethrough

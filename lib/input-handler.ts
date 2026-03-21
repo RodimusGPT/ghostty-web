@@ -196,6 +196,7 @@ export class InputHandler {
   private wheelListener: ((e: WheelEvent) => void) | null = null;
   private isComposing = false;
   private isDisposed = false;
+  private macOptionIsMeta = false;
   private mouseButtonsPressed = 0; // Track which buttons are pressed for motion reporting
   private lastKeyDownData: string | null = null;
   private lastKeyDownTime = 0;
@@ -253,6 +254,13 @@ export class InputHandler {
    */
   setCustomKeyEventHandler(handler: (event: KeyboardEvent) => boolean): void {
     this.customKeyEventHandler = handler;
+  }
+
+  /**
+   * Set macOptionIsMeta (treat Option as Meta/Alt on macOS)
+   */
+  setMacOptionIsMeta(enabled: boolean): void {
+    this.macOptionIsMeta = enabled;
   }
 
   /**
@@ -351,6 +359,10 @@ export class InputHandler {
     if (event.ctrlKey && !event.altKey) return false;
     if (event.altKey && !event.ctrlKey) return false;
     if (event.metaKey) return false; // Cmd key on Mac
+
+    // When macOptionIsMeta is enabled, Option+key on Mac should be sent as Alt+key
+    // rather than inserting the special character the Option key produces
+    if (this.macOptionIsMeta && event.altKey) return false;
 
     // If key produces a single printable character
     return event.key.length === 1;
