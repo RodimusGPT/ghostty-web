@@ -827,10 +827,24 @@ export class CanvasRenderer {
   }
 
   /**
+   * Get current cursor style
+   */
+  public getCursorStyle(): 'block' | 'underline' | 'bar' {
+    return this.cursorStyle;
+  }
+
+  /**
    * Update cursor style
    */
   public setCursorStyle(style: 'block' | 'underline' | 'bar'): void {
     this.cursorStyle = style;
+  }
+
+  /**
+   * Get current cursor blink state
+   */
+  public getCursorBlink(): boolean {
+    return this.cursorBlink;
   }
 
   /**
