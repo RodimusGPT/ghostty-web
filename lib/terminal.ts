@@ -1428,6 +1428,12 @@ export class Terminal implements ITerminalCore {
       this.textarea = undefined;
     }
 
+    // Remove ARIA live region from DOM
+    if (this.accessibilityLiveRegion && this.accessibilityLiveRegion.parentNode) {
+      this.accessibilityLiveRegion.parentNode.removeChild(this.accessibilityLiveRegion);
+      this.accessibilityLiveRegion = undefined;
+    }
+
     // Remove event listeners
     if (this.element) {
       this.element.removeEventListener('wheel', this.handleWheel);
@@ -1441,6 +1447,7 @@ export class Terminal implements ITerminalCore {
       this.element.removeAttribute('role');
       this.element.removeAttribute('aria-label');
       this.element.removeAttribute('aria-multiline');
+      this.element.removeAttribute('aria-roledescription');
     }
 
     // Remove document-level listeners (only if opened)
