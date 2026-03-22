@@ -40,6 +40,40 @@ export interface IScrollbackProvider {
 }
 
 // ============================================================================
+// IRenderer Interface - implemented by CanvasRenderer and WebglRenderer
+// ============================================================================
+
+export interface IRenderer {
+  render(
+    buffer: IRenderable,
+    forceAll?: boolean,
+    viewportY?: number,
+    scrollbackProvider?: IScrollbackProvider,
+    scrollbarOpacity?: number
+  ): void;
+  resize(cols: number, rows: number): void;
+  remeasureFont(): void;
+  getMetrics(): FontMetrics;
+  getCanvas(): HTMLCanvasElement;
+  get charWidth(): number;
+  get charHeight(): number;
+  setSelectionManager(manager: SelectionManager): void;
+  setTheme(theme: ITheme): void;
+  setFontSize(size: number): void;
+  setFontFamily(family: string): void;
+  getCursorStyle(): 'block' | 'underline' | 'bar';
+  setCursorStyle(style: 'block' | 'underline' | 'bar'): void;
+  getCursorBlink(): boolean;
+  setCursorBlink(enabled: boolean): void;
+  setHoveredHyperlinkId(hyperlinkId: number): void;
+  setHoveredLinkRange(
+    range: { startX: number; startY: number; endX: number; endY: number } | null
+  ): void;
+  clear(): void;
+  dispose(): void;
+}
+
+// ============================================================================
 // Type Definitions
 // ============================================================================
 
@@ -97,7 +131,7 @@ export const DEFAULT_THEME: Required<ITheme> = {
 // CanvasRenderer Class
 // ============================================================================
 
-export class CanvasRenderer {
+export class CanvasRenderer implements IRenderer {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private fontSize: number;
