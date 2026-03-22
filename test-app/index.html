@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>ghostty-web SSH Terminal</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        background: #1e1e1e;
+        color: #d4d4d4;
+        font-family: system-ui, sans-serif;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+      }
+      header {
+        padding: 8px 16px;
+        background: #252526;
+        border-bottom: 1px solid #3c3c3c;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 13px;
+      }
+      header .title { font-weight: 600; }
+      header .status {
+        padding: 2px 8px;
+        border-radius: 3px;
+        font-size: 11px;
+        font-weight: 500;
+      }
+      .status.connecting { background: #664d00; color: #ffcc00; }
+      .status.connected { background: #1b4332; color: #52c41a; }
+      .status.disconnected { background: #4a1515; color: #ff4d4f; }
+      #terminal-container {
+        flex: 1;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <span class="title">ghostty-web</span>
+      <span id="status" class="status connecting">Connecting...</span>
+    </header>
+    <div id="terminal-container"></div>
+    <script type="module" src="/frontend.js"></script>
+  </body>
+</html>

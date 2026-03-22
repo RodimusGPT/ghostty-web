@@ -1,0 +1,17 @@
+{
+  "name": "test-app",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "ssh2": "^1.17.0",
+    "ws": "^8.20.0"
+  }
+}
