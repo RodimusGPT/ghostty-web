@@ -98,6 +98,8 @@ export type { SelectionCoordinates } from './selection-manager';
 export { FitAddon } from './addons/fit';
 export type { ITerminalDimensions } from './addons/fit';
 export { WebglAddon } from './addons/webgl/webgl';
+export { SearchAddon } from './addons/search';
+export type { ISearchOptions } from './addons/search';
 
 // Link providers
 export { OSC8LinkProvider } from './providers/osc8-link-provider';
