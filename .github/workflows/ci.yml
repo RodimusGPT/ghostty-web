@@ -114,16 +114,6 @@ jobs:
       - name: Build library
         run: bun run build
 
-      - name: Generate tarball
-        run: npm pack
-
-      - name: Upload tarball
-        uses: actions/upload-artifact@v4
-        with:
-          name: ghostty-web-tarball
-          path: '*.tgz'
-          retention-days: 30
-
   visual-test:
     name: visual regression
     runs-on: ubuntu-latest
