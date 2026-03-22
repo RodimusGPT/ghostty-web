@@ -23,15 +23,19 @@ import { InputHandler, type MouseTrackingConfig } from './input-handler';
 import type {
   IBufferNamespace,
   IBufferRange,
+  IDecoration,
+  IDecorationOptions,
   IDisposable,
   IEvent,
   IKeyEvent,
+  IMarker,
   ITerminalAddon,
   ITerminalCore,
   ITerminalOptions,
   IUnicodeVersionProvider,
 } from './interfaces';
 import { LinkDetector } from './link-detector';
+import { Decoration, Marker } from './marker';
 import { OSC8LinkProvider } from './providers/osc8-link-provider';
 import { UrlRegexProvider } from './providers/url-regex-provider';
 import { CanvasRenderer, type IRenderer } from './renderer';
@@ -109,6 +113,13 @@ export class Terminal implements ITerminalCore {
 
   // Addons
   private addons: ITerminalAddon[] = [];
+
+  // Markers and decorations
+  private markers: Marker[] = [];
+  private decorations: Decoration[] = [];
+
+  // Accessibility
+  private accessibilityLiveRegion?: HTMLElement;
 
   // Phase 1: Custom event handlers
   private customKeyEventHandler?: (event: KeyboardEvent) => boolean;
@@ -381,8 +392,23 @@ export class Terminal implements ITerminalCore {
 
       // Add accessibility attributes for screen readers and extensions
       parent.setAttribute('role', 'textbox');
-      parent.setAttribute('aria-label', 'Terminal input');
+      parent.setAttribute('aria-label', 'Terminal');
       parent.setAttribute('aria-multiline', 'true');
+      parent.setAttribute('aria-roledescription', 'terminal');
+
+      // Create ARIA live region for screen reader announcements
+      this.accessibilityLiveRegion = document.createElement('div');
+      this.accessibilityLiveRegion.setAttribute('aria-live', 'assertive');
+      this.accessibilityLiveRegion.setAttribute('aria-atomic', 'false');
+      this.accessibilityLiveRegion.setAttribute('role', 'log');
+      this.accessibilityLiveRegion.setAttribute('aria-label', 'Terminal output');
+      this.accessibilityLiveRegion.style.position = 'absolute';
+      this.accessibilityLiveRegion.style.width = '1px';
+      this.accessibilityLiveRegion.style.height = '1px';
+      this.accessibilityLiveRegion.style.overflow = 'hidden';
+      this.accessibilityLiveRegion.style.clip = 'rect(0, 0, 0, 0)';
+      this.accessibilityLiveRegion.style.whiteSpace = 'nowrap';
+      parent.appendChild(this.accessibilityLiveRegion);
 
       // Create WASM terminal with current dimensions and config
       const config = this.buildWasmConfig();
@@ -392,6 +418,7 @@ export class Terminal implements ITerminalCore {
       this.canvas = document.createElement('canvas');
       this.canvas.style.display = 'block';
       this.canvas.style.cursor = 'text';
+      this.canvas.setAttribute('aria-hidden', 'true'); // Canvas is decorative; text is in the live region
 
       parent.appendChild(this.canvas);
 
@@ -604,6 +631,21 @@ export class Terminal implements ITerminalCore {
 
     // Invalidate link cache (content changed)
     this.linkDetector?.invalidateCache();
+
+    // Announce output to screen readers via ARIA live region
+    if (this.accessibilityLiveRegion && typeof data === 'string') {
+      // Strip escape sequences for screen reader announcement
+      const plainText = data.replace(/\x1b\[[^a-zA-Z]*[a-zA-Z]/g, '').replace(/[\x00-\x1f]/g, '');
+      if (plainText.trim()) {
+        const span = document.createElement('span');
+        span.textContent = plainText;
+        this.accessibilityLiveRegion.appendChild(span);
+        // Keep live region from growing unbounded
+        while (this.accessibilityLiveRegion.childNodes.length > 50) {
+          this.accessibilityLiveRegion.removeChild(this.accessibilityLiveRegion.firstChild!);
+        }
+      }
+    }
 
     // Phase 2: Auto-scroll to bottom on new output (xterm.js behavior)
     if (this.viewportY !== 0) {
@@ -823,6 +865,41 @@ export class Terminal implements ITerminalCore {
     if (this.wasmTerm) {
       newRenderer.render(this.wasmTerm, true, this.viewportY, this, this.scrollbarOpacity);
     }
+  }
+
+  // ==========================================================================
+  // Marker & Decoration API (xterm.js compatible)
+  // ==========================================================================
+
+  /**
+   * Register a marker at the current cursor position + offset.
+   * @param cursorYOffset Offset from current cursor Y position (default: 0)
+   */
+  public registerMarker(cursorYOffset = 0): IMarker {
+    const buf = this.buffer.active;
+    const scrollbackLength = buf.length - this.rows;
+    const absoluteLine = scrollbackLength + buf.cursorY + cursorYOffset;
+    const marker = new Marker(absoluteLine);
+    this.markers.push(marker);
+    marker.onDispose(() => {
+      const idx = this.markers.indexOf(marker);
+      if (idx !== -1) this.markers.splice(idx, 1);
+    });
+    return marker;
+  }
+
+  /**
+   * Register a decoration attached to a marker position.
+   * The decoration's DOM element is created when it enters the viewport.
+   */
+  public registerDecoration(options: IDecorationOptions): IDecoration {
+    const decoration = new Decoration(options);
+    this.decorations.push(decoration);
+    decoration.onDispose(() => {
+      const idx = this.decorations.indexOf(decoration);
+      if (idx !== -1) this.decorations.splice(idx, 1);
+    });
+    return decoration;
   }
 
   // ==========================================================================

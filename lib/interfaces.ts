@@ -85,6 +85,55 @@ export interface ITerminalAddon {
   dispose(): void;
 }
 
+/**
+ * A marker tracks a position in the buffer that moves with content.
+ * Created via terminal.registerMarker().
+ */
+export interface IMarker extends IDisposable {
+  /** Unique marker ID */
+  readonly id: number;
+  /** Whether the marker is still valid (not disposed and line not removed from scrollback) */
+  readonly isDisposed: boolean;
+  /** The buffer line this marker points to (absolute buffer position) */
+  readonly line: number;
+  /** Fires when the marker is disposed */
+  readonly onDispose: IEvent<void>;
+}
+
+/**
+ * Options for creating a decoration via terminal.registerDecoration().
+ */
+export interface IDecorationOptions {
+  /** The marker to attach the decoration to */
+  readonly marker: IMarker;
+  /** The anchor position: 'right' | 'left' (default: 'left') */
+  readonly anchor?: 'right' | 'left';
+  /** X offset from anchor in cells (default: 0) */
+  readonly x?: number;
+  /** Width of the decoration in cells (default: terminal width) */
+  readonly width?: number;
+  /** Height of the decoration in cells (default: 1) */
+  readonly height?: number;
+  /** Layer: 'bottom' renders below text, 'top' above (default: 'bottom') */
+  readonly layer?: 'bottom' | 'top';
+}
+
+/**
+ * A decoration is a DOM element attached to a marker position.
+ */
+export interface IDecoration extends IDisposable {
+  /** The marker this decoration is attached to */
+  readonly marker: IMarker;
+  /** The DOM element (created when the decoration enters the viewport) */
+  readonly element: HTMLElement | undefined;
+  /** Whether the decoration is disposed */
+  readonly isDisposed: boolean;
+  /** Fires when the decoration's element is created and available */
+  readonly onRender: IEvent<HTMLElement>;
+  /** Fires when the decoration is disposed */
+  readonly onDispose: IEvent<void>;
+}
+
 export interface ITerminalCore {
   cols: number;
   rows: number;

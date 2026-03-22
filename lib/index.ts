@@ -68,6 +68,9 @@ export type {
   IEvent,
   IBufferRange,
   IKeyEvent,
+  IMarker,
+  IDecoration,
+  IDecorationOptions,
   IUnicodeVersionProvider,
 } from './interfaces';
 
