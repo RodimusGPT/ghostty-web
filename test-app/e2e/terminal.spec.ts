@@ -76,10 +76,7 @@ test.describe('Live Terminal', () => {
     await waitForShell(page);
 
     // Print colored text
-    await typeCommand(
-      page,
-      'printf "\\e[31mRed\\e[32m Green\\e[34m Blue\\e[33m Yellow\\e[0m\\n"'
-    );
+    await typeCommand(page, 'printf "\\e[31mRed\\e[32m Green\\e[34m Blue\\e[33m Yellow\\e[0m\\n"');
 
     await screenshotTerminal(page, 'ansi-colors.png');
   });

@@ -52,8 +52,7 @@ async function main() {
   };
 
   ws.onmessage = (event) => {
-    const data =
-      event.data instanceof ArrayBuffer ? new Uint8Array(event.data) : event.data;
+    const data = event.data instanceof ArrayBuffer ? new Uint8Array(event.data) : event.data;
     term.write(data);
   };
 
