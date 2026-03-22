@@ -31,15 +31,20 @@ export interface ITerminalOptions {
   lineHeight?: number; // Line height multiplier (default: 1.0)
   letterSpacing?: number; // Extra horizontal pixels between characters (default: 0)
   allowTransparency?: boolean;
+  drawBoldTextInBrightColors?: boolean; // Render bold text in bright colors (default: true)
+  minimumContrastRatio?: number; // Minimum WCAG contrast ratio 1-21 (default: 1, disabled)
+  cursorInactiveStyle?: 'outline' | 'block' | 'bar' | 'underline' | 'none'; // Cursor when unfocused (default: 'outline')
+  tabStopWidth?: number; // Tab stop width in columns (default: 8)
+  wordSeparator?: string; // Word boundary chars for double-click (default: ' ()[]{}\',:;"')
+  altClickMovesCursor?: boolean; // Alt+click moves cursor (default: true)
+  rightClickSelectsWord?: boolean; // Right-click selects word (default: false)
+  scrollOnUserInput?: boolean; // Auto-scroll to bottom on input (default: true)
 
-  // Phase 1 additions
   convertEol?: boolean; // Convert \n to \r\n (default: false)
   disableStdin?: boolean; // Disable keyboard input (default: false)
 
-  // Mac-specific options
   macOptionIsMeta?: boolean; // Treat Option key as Meta/Alt on macOS (default: false)
 
-  // Scrolling options
   smoothScrollDuration?: number; // Duration in ms for smooth scroll animation (default: 100, 0 = instant)
 
   // Internal: Ghostty WASM instance (optional, for test isolation)
@@ -372,4 +377,20 @@ export interface IBufferCell {
   getCodepoint(): number;
   /** Whether cell has dim/faint attribute (boolean version) */
   isDim(): boolean;
+  /** Whether cell has overline style */
+  isOverline(): number;
+  /** Whether foreground is RGB color */
+  isFgRGB(): boolean;
+  /** Whether background is RGB color */
+  isBgRGB(): boolean;
+  /** Whether foreground is palette color */
+  isFgPalette(): boolean;
+  /** Whether background is palette color */
+  isBgPalette(): boolean;
+  /** Whether foreground is default color */
+  isFgDefault(): boolean;
+  /** Whether background is default color */
+  isBgDefault(): boolean;
+  /** Whether all attributes are default */
+  isAttributeDefault(): boolean;
 }
