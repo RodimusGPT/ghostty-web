@@ -34,7 +34,7 @@ import type {
 import { LinkDetector } from './link-detector';
 import { OSC8LinkProvider } from './providers/osc8-link-provider';
 import { UrlRegexProvider } from './providers/url-regex-provider';
-import { CanvasRenderer } from './renderer';
+import { CanvasRenderer, type IRenderer } from './renderer';
 import { SelectionManager } from './selection-manager';
 import type { ILink, ILinkProvider } from './types';
 
@@ -65,7 +65,7 @@ export class Terminal implements ITerminalCore {
   // Components (created on open())
   private ghostty?: Ghostty;
   public wasmTerm?: GhosttyTerminal; // Made public for link providers
-  public renderer?: CanvasRenderer; // Made public for FitAddon
+  public renderer?: IRenderer; // Made public for FitAddon
   private inputHandler?: InputHandler;
   private selectionManager?: SelectionManager;
   private canvas?: HTMLCanvasElement;
@@ -796,6 +796,33 @@ export class Terminal implements ITerminalCore {
   loadAddon(addon: ITerminalAddon): void {
     addon.activate(this);
     this.addons.push(addon);
+  }
+
+  /**
+   * Swap the current renderer with a new one (e.g., Canvas -> WebGL).
+   * The new renderer must implement IRenderer. The old renderer is disposed.
+   */
+  setRenderer(newRenderer: IRenderer): void {
+    if (!this.isOpen) {
+      throw new Error('Terminal must be open before setting renderer');
+    }
+
+    const oldRenderer = this.renderer;
+
+    // Transfer state to new renderer
+    newRenderer.setSelectionManager(this.selectionManager!);
+    newRenderer.resize(this.cols, this.rows);
+
+    // Swap
+    this.renderer = newRenderer;
+
+    // Dispose old renderer
+    oldRenderer?.dispose();
+
+    // Force full redraw with new renderer
+    if (this.wasmTerm) {
+      newRenderer.render(this.wasmTerm, true, this.viewportY, this, this.scrollbarOpacity);
+    }
   }
 
   // ==========================================================================
