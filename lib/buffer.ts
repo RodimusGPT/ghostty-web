@@ -406,4 +406,36 @@ export class BufferCell implements IBufferCell {
   isDim(): boolean {
     return (this.cell.flags & CellFlags.FAINT) !== 0;
   }
+
+  isOverline(): number {
+    return 0; // Overline not tracked in cell flags
+  }
+
+  isFgRGB(): boolean {
+    return this.cell.fg_r !== 0 || this.cell.fg_g !== 0 || this.cell.fg_b !== 0;
+  }
+
+  isBgRGB(): boolean {
+    return this.cell.bg_r !== 0 || this.cell.bg_g !== 0 || this.cell.bg_b !== 0;
+  }
+
+  isFgPalette(): boolean {
+    return false; // WASM resolves all colors to RGB
+  }
+
+  isBgPalette(): boolean {
+    return false; // WASM resolves all colors to RGB
+  }
+
+  isFgDefault(): boolean {
+    return this.cell.fg_r === 204 && this.cell.fg_g === 204 && this.cell.fg_b === 204;
+  }
+
+  isBgDefault(): boolean {
+    return this.cell.bg_r === 0 && this.cell.bg_g === 0 && this.cell.bg_b === 0;
+  }
+
+  isAttributeDefault(): boolean {
+    return this.cell.flags === 0 && this.isFgDefault() && this.isBgDefault();
+  }
 }

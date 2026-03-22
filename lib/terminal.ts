@@ -137,8 +137,10 @@ export class Terminal implements ITerminalCore {
   private cursorMoveEmitter = new EventEmitter<void>();
   private lineFeedEmitter = new EventEmitter<void>();
   private writeParsedEmitter = new EventEmitter<void>();
+  private binaryEmitter = new EventEmitter<string>();
   // Public event accessors (xterm.js compatibility)
   public readonly onData: IEvent<string> = this.dataEmitter.event;
+  public readonly onBinary: IEvent<string> = this.binaryEmitter.event;
   public readonly onResize: IEvent<{ cols: number; rows: number }> = this.resizeEmitter.event;
   public readonly onBell: IEvent<void> = this.bellEmitter.event;
   public readonly onSelectionChange: IEvent<void> = this.selectionChangeEmitter.event;
@@ -212,10 +214,18 @@ export class Terminal implements ITerminalCore {
       lineHeight: options.lineHeight ?? 1.0,
       letterSpacing: options.letterSpacing ?? 0,
       allowTransparency: options.allowTransparency ?? false,
+      drawBoldTextInBrightColors: options.drawBoldTextInBrightColors ?? true,
+      minimumContrastRatio: options.minimumContrastRatio ?? 1,
+      cursorInactiveStyle: options.cursorInactiveStyle ?? 'outline',
+      tabStopWidth: options.tabStopWidth ?? 8,
+      wordSeparator: options.wordSeparator ?? ' ()[]{}\',;:"',
+      altClickMovesCursor: options.altClickMovesCursor ?? true,
+      rightClickSelectsWord: options.rightClickSelectsWord ?? false,
+      scrollOnUserInput: options.scrollOnUserInput ?? true,
       convertEol: options.convertEol ?? false,
       disableStdin: options.disableStdin ?? false,
       macOptionIsMeta: options.macOptionIsMeta ?? false,
-      smoothScrollDuration: options.smoothScrollDuration ?? 100, // Default: 100ms smooth scroll
+      smoothScrollDuration: options.smoothScrollDuration ?? 100,
     };
 
     // Wrap in Proxy to intercept runtime changes (xterm.js compatibility)
@@ -547,6 +557,10 @@ export class Terminal implements ITerminalCore {
           }
           // Clear selection when user types
           this.selectionManager?.clearSelection();
+          // Auto-scroll to bottom on user input
+          if (this.options.scrollOnUserInput && this.viewportY !== 0) {
+            this.scrollToBottom();
+          }
           // Input handler fires data events
           this.dataEmitter.fire(data);
         },
@@ -888,6 +902,16 @@ export class Terminal implements ITerminalCore {
   loadAddon(addon: ITerminalAddon): void {
     addon.activate(this);
     this.addons.push(addon);
+  }
+
+  /**
+   * Refresh (redraw) terminal rows in the given range.
+   * @param start Start row (inclusive)
+   * @param end End row (inclusive)
+   */
+  public refresh(start: number, end: number): void {
+    if (!this.renderer || !this.wasmTerm) return;
+    this.renderer.render(this.wasmTerm, true, this.viewportY, this, this.scrollbarOpacity);
   }
 
   /**
