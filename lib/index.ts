@@ -71,6 +71,9 @@ export type {
   IMarker,
   IDecoration,
   IDecorationOptions,
+  IModes,
+  IParser,
+  IFunctionIdentifier,
   IUnicodeVersionProvider,
 } from './interfaces';
 

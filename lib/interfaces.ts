@@ -134,6 +134,94 @@ export interface IDecoration extends IDisposable {
   readonly onDispose: IEvent<void>;
 }
 
+/**
+ * Terminal mode state (xterm.js compatible).
+ * Reflects current DEC/ANSI mode settings.
+ */
+export interface IModes {
+  /** Application cursor keys mode (DECCKM, mode 1) */
+  readonly applicationCursorKeysMode: boolean;
+  /** Application keypad mode (DECKPAM/DECKPNM, mode 66) */
+  readonly applicationKeypadMode: boolean;
+  /** Bracketed paste mode (mode 2004) */
+  readonly bracketedPasteMode: boolean;
+  /** Insert mode (IRM, mode 4) */
+  readonly insertMode: boolean;
+  /** Mouse tracking mode: 'none' | 'x10' | 'vt200' | 'drag' | 'any' */
+  readonly mouseTrackingMode: 'none' | 'x10' | 'vt200' | 'drag' | 'any';
+  /** Origin mode (DECOM, mode 6) */
+  readonly originMode: boolean;
+  /** Reverse wraparound mode (mode 45) */
+  readonly reverseWraparoundMode: boolean;
+  /** Send focus events mode (mode 1004) */
+  readonly sendFocusMode: boolean;
+  /** Wraparound mode (DECAWM, mode 7) */
+  readonly wraparoundMode: boolean;
+}
+
+/**
+ * Parser interface for registering custom escape sequence handlers.
+ * Enables addons to intercept and handle specific sequences.
+ */
+export interface IParser {
+  /**
+   * Register a handler for CSI (Control Sequence Introducer) sequences.
+   * @param id The CSI final character and optional prefix (e.g., {final: 'm'})
+   * @param callback Called with params when the sequence is parsed. Return true if handled.
+   * @returns IDisposable to unregister the handler
+   */
+  registerCsiHandler(
+    id: IFunctionIdentifier,
+    callback: (params: (number | number[])[]) => boolean | Promise<boolean>
+  ): IDisposable;
+
+  /**
+   * Register a handler for DCS (Device Control String) sequences.
+   * @param id The DCS identifier
+   * @param callback Called with data string. Return true if handled.
+   * @returns IDisposable to unregister the handler
+   */
+  registerDcsHandler(
+    id: IFunctionIdentifier,
+    callback: (data: string, param: (number | number[])[]) => boolean | Promise<boolean>
+  ): IDisposable;
+
+  /**
+   * Register a handler for ESC (Escape) sequences.
+   * @param id The ESC identifier
+   * @param callback Called when the sequence is parsed. Return true if handled.
+   * @returns IDisposable to unregister the handler
+   */
+  registerEscHandler(
+    id: IFunctionIdentifier,
+    callback: () => boolean | Promise<boolean>
+  ): IDisposable;
+
+  /**
+   * Register a handler for OSC (Operating System Command) sequences.
+   * @param ident The OSC number (e.g., 0 for title)
+   * @param callback Called with the OSC data string. Return true if handled.
+   * @returns IDisposable to unregister the handler
+   */
+  registerOscHandler(
+    ident: number,
+    callback: (data: string) => boolean | Promise<boolean>
+  ): IDisposable;
+}
+
+/**
+ * Identifies a function sequence (CSI, DCS, ESC) by its final character
+ * and optional prefix/intermediates.
+ */
+export interface IFunctionIdentifier {
+  /** The prefix character (e.g., '?' for DEC private modes) */
+  prefix?: string;
+  /** Intermediate characters */
+  intermediates?: string;
+  /** The final character that identifies the sequence */
+  final: string;
+}
+
 export interface ITerminalCore {
   cols: number;
   rows: number;

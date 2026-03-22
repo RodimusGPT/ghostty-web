@@ -27,8 +27,11 @@ import type {
   IDecorationOptions,
   IDisposable,
   IEvent,
+  IFunctionIdentifier,
   IKeyEvent,
   IMarker,
+  IModes,
+  IParser,
   ITerminalAddon,
   ITerminalCore,
   ITerminalOptions,
@@ -36,6 +39,7 @@ import type {
 } from './interfaces';
 import { LinkDetector } from './link-detector';
 import { Decoration, Marker } from './marker';
+import { TerminalParser } from './parser';
 import { OSC8LinkProvider } from './providers/osc8-link-provider';
 import { UrlRegexProvider } from './providers/url-regex-provider';
 import { CanvasRenderer, type IRenderer } from './renderer';
@@ -62,6 +66,47 @@ export class Terminal implements ITerminalCore {
       return '15.1'; // Ghostty supports Unicode 15.1
     },
   };
+
+  // Modes API (xterm.js compatibility) — live view of terminal mode state
+  public get modes(): IModes {
+    const wt = this.wasmTerm;
+    return {
+      get applicationCursorKeysMode() {
+        return wt?.getMode(1, false) ?? false;
+      },
+      get applicationKeypadMode() {
+        return wt?.getMode(66, false) ?? false;
+      },
+      get bracketedPasteMode() {
+        return wt?.getMode(2004, false) ?? false;
+      },
+      get insertMode() {
+        return wt?.getMode(4, true) ?? false;
+      },
+      get mouseTrackingMode() {
+        if (wt?.getMode(1003, false)) return 'any' as const;
+        if (wt?.getMode(1002, false)) return 'drag' as const;
+        if (wt?.getMode(1000, false)) return 'vt200' as const;
+        if (wt?.getMode(9, false)) return 'x10' as const;
+        return 'none' as const;
+      },
+      get originMode() {
+        return wt?.getMode(6, false) ?? false;
+      },
+      get reverseWraparoundMode() {
+        return wt?.getMode(45, false) ?? false;
+      },
+      get sendFocusMode() {
+        return wt?.getMode(1004, false) ?? false;
+      },
+      get wraparoundMode() {
+        return wt?.getMode(7, false) ?? true; // default on
+      },
+    };
+  }
+
+  // Parser API (xterm.js compatibility) — register custom escape sequence handlers
+  public readonly parser: IParser = new TerminalParser();
 
   // Options (public for xterm.js compatibility)
   public readonly options!: Required<ITerminalOptions>;
@@ -607,6 +652,11 @@ export class Terminal implements ITerminalCore {
     // Note: We intentionally do NOT clear selection on write - most modern terminals
     // preserve selection when new data arrives. Selection is cleared by user actions
     // like clicking or typing, not by incoming data.
+
+    // Let registered parser handlers process the data first
+    if (typeof data === 'string') {
+      (this.parser as TerminalParser).processData(data);
+    }
 
     // Write directly to WASM terminal (handles VT parsing internally)
     this.wasmTerm!.write(data);
