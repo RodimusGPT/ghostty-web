@@ -53,7 +53,7 @@
     "build:wasm-copy": "cp ghostty-vt.wasm dist/",
     "clean": "rm -rf dist",
     "preview": "vite preview",
-    "test": "bun test",
+    "test": "bun test lib/",
     "test:visual": "playwright test",
     "test:visual:update": "playwright test --update-snapshots",
     "typecheck": "tsc --noEmit",
