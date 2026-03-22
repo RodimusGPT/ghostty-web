@@ -467,7 +467,7 @@ new file mode 100644
 index 000000000..73ae2e6fa
 --- /dev/null
 +++ b/src/terminal/c/terminal.zig
-@@ -0,0 +1,1245 @@
+@@ -0,0 +1,1237 @@
 +//! C API wrapper for Terminal
 +//!
 +//! This provides a minimal, high-performance interface to Ghostty's Terminal

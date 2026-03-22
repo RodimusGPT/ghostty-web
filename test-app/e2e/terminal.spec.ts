@@ -198,4 +198,54 @@ test.describe('Live Terminal', () => {
 
     await screenshotTerminal(page, 'ctrl-c.png');
   });
+
+  test('dynamic theme change to light', async ({ page }) => {
+    await waitForShell(page);
+
+    // Print some colored content first
+    await typeCommand(page, 'printf "\\e[31mRed\\e[32m Green\\e[34m Blue\\e[0m\\n"');
+    await page.waitForTimeout(500);
+
+    // Switch to light theme via dropdown
+    await page.selectOption('#theme-select', 'light');
+    await page.waitForTimeout(500);
+
+    await screenshotTerminal(page, 'theme-light.png');
+  });
+
+  test('dynamic theme change to monokai', async ({ page }) => {
+    await waitForShell(page);
+
+    await typeCommand(page, 'printf "\\e[31mRed\\e[32m Green\\e[34m Blue\\e[0m\\n"');
+    await page.waitForTimeout(500);
+
+    await page.selectOption('#theme-select', 'monokai');
+    await page.waitForTimeout(500);
+
+    await screenshotTerminal(page, 'theme-monokai.png');
+  });
+
+  test('dynamic theme change to dracula', async ({ page }) => {
+    await waitForShell(page);
+
+    await typeCommand(page, 'printf "\\e[31mRed\\e[32m Green\\e[34m Blue\\e[0m\\n"');
+    await page.waitForTimeout(500);
+
+    await page.selectOption('#theme-select', 'dracula');
+    await page.waitForTimeout(500);
+
+    await screenshotTerminal(page, 'theme-dracula.png');
+  });
+
+  test('dynamic theme change to solarized', async ({ page }) => {
+    await waitForShell(page);
+
+    await typeCommand(page, 'printf "\\e[31mRed\\e[32m Green\\e[34m Blue\\e[0m\\n"');
+    await page.waitForTimeout(500);
+
+    await page.selectOption('#theme-select', 'solarized');
+    await page.waitForTimeout(500);
+
+    await screenshotTerminal(page, 'theme-solarized.png');
+  });
 });
