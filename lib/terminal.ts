@@ -276,8 +276,14 @@ export class Terminal implements ITerminalCore {
         break;
 
       case 'theme':
-        if (this.renderer) {
-          console.warn('ghostty-web: theme changes after open() are not yet fully supported');
+        if (this.renderer && this.wasmTerm) {
+          // Update renderer theme (CSS-level colors)
+          this.renderer.setTheme(newValue);
+          // Update WASM terminal colors so cell colors resolve correctly
+          const wasmConfig = this.buildThemeConfig(newValue);
+          this.wasmTerm.setColors(wasmConfig);
+          // Force full redraw
+          this.renderer.render(this.wasmTerm, true, this.viewportY, this, this.scrollbarOpacity);
         }
         break;
 
@@ -404,6 +410,35 @@ export class Terminal implements ITerminalCore {
       bgColor: this.parseColorToHex(theme?.background),
       cursorColor: this.parseColorToHex(theme?.cursor),
       palette,
+    };
+  }
+
+  /**
+   * Convert an ITheme to GhosttyTerminalConfig for runtime color updates.
+   */
+  private buildThemeConfig(theme: any): GhosttyTerminalConfig {
+    return {
+      fgColor: this.parseColorToHex(theme?.foreground),
+      bgColor: this.parseColorToHex(theme?.background),
+      cursorColor: this.parseColorToHex(theme?.cursor),
+      palette: [
+        this.parseColorToHex(theme?.black),
+        this.parseColorToHex(theme?.red),
+        this.parseColorToHex(theme?.green),
+        this.parseColorToHex(theme?.yellow),
+        this.parseColorToHex(theme?.blue),
+        this.parseColorToHex(theme?.magenta),
+        this.parseColorToHex(theme?.cyan),
+        this.parseColorToHex(theme?.white),
+        this.parseColorToHex(theme?.brightBlack),
+        this.parseColorToHex(theme?.brightRed),
+        this.parseColorToHex(theme?.brightGreen),
+        this.parseColorToHex(theme?.brightYellow),
+        this.parseColorToHex(theme?.brightBlue),
+        this.parseColorToHex(theme?.brightMagenta),
+        this.parseColorToHex(theme?.brightCyan),
+        this.parseColorToHex(theme?.brightWhite),
+      ],
     };
   }
 

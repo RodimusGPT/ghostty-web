@@ -356,6 +356,35 @@ export class GhosttyTerminal {
     this.initCellPool();
   }
 
+  /**
+   * Update terminal colors at runtime. Forces a full redraw.
+   * Colors with value 0 are left unchanged.
+   */
+  setColors(config: GhosttyTerminalConfig): void {
+    const configPtr = this.exports.ghostty_wasm_alloc_u8_array(GHOSTTY_CONFIG_SIZE);
+    if (configPtr === 0) return;
+
+    try {
+      const view = new DataView(this.memory.buffer);
+      let offset = configPtr;
+      view.setUint32(offset, 0, true); // scrollback_limit (0 = unchanged)
+      offset += 4;
+      view.setUint32(offset, config.fgColor ?? 0, true);
+      offset += 4;
+      view.setUint32(offset, config.bgColor ?? 0, true);
+      offset += 4;
+      view.setUint32(offset, config.cursorColor ?? 0, true);
+      offset += 4;
+      for (let i = 0; i < 16; i++) {
+        view.setUint32(offset, config.palette?.[i] ?? 0, true);
+        offset += 4;
+      }
+      this.exports.ghostty_terminal_set_colors(this.handle, configPtr);
+    } finally {
+      this.exports.ghostty_wasm_free_u8_array(configPtr, GHOSTTY_CONFIG_SIZE);
+    }
+  }
+
   free(): void {
     if (this.viewportBufferPtr) {
       this.exports.ghostty_wasm_free_u8_array(this.viewportBufferPtr, this.viewportBufferSize);
