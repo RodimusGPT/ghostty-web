@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>loading</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background: #1e1e1e;
+      }
+      #terminal {
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="terminal"></div>
+    <script type="module">
+      import { init, Terminal } from '../lib/index.ts';
+
+      const params = new URLSearchParams(location.search);
+      const scenario = params.get('scenario') || 'basic-text';
+      const cursorStyle = params.get('cursor') || 'block';
+
+      try {
+        await init();
+      } catch (e) {
+        console.error('Failed to init WASM:', e.message);
+        document.title = 'error: ' + e.message;
+        return;
+      }
+
+      const term = new Terminal({
+        cols: 80,
+        rows: 24,
+        fontSize: 15,
+        fontFamily: 'monospace',
+        cursorBlink: false,
+        cursorStyle: cursorStyle,
+      });
+
+      try {
+        term.open(document.getElementById('terminal'));
+      } catch (e) {
+        console.error('Failed to open terminal:', e.message);
+        document.title = 'error: ' + e.message;
+        return;
+      }
+
+      const scenarios = {
+        'basic-text': () => {
+          term.write('Hello, World!\r\n');
+          term.write('Line 2: The quick brown fox jumps over the lazy dog.\r\n');
+          term.write('Line 3: 0123456789 !@#$%^&*()\r\n');
+          term.write('Line 4: ABCDEFGHIJKLMNOPQRSTUVWXYZ\r\n');
+          term.write('Line 5: abcdefghijklmnopqrstuvwxyz');
+        },
+
+        'ansi-16-colors': () => {
+          // Standard foreground colors
+          term.write('Standard FG: ');
+          for (let i = 30; i <= 37; i++) {
+            term.write(`\x1b[${i}m Color \x1b[0m`);
+          }
+          term.write('\r\n');
+
+          // Bright foreground colors
+          term.write('Bright FG:   ');
+          for (let i = 90; i <= 97; i++) {
+            term.write(`\x1b[${i}m Color \x1b[0m`);
+          }
+          term.write('\r\n');
+
+          // Standard background colors
+          term.write('Standard BG: ');
+          for (let i = 40; i <= 47; i++) {
+            term.write(`\x1b[${i}m  bg  \x1b[0m`);
+          }
+          term.write('\r\n');
+
+          // Bright background colors
+          term.write('Bright BG:   ');
+          for (let i = 100; i <= 107; i++) {
+            term.write(`\x1b[${i}m  bg  \x1b[0m`);
+          }
+        },
+
+        'rgb-colors': () => {
+          // RGB foreground gradient
+          term.write('RGB FG gradient:\r\n');
+          for (let i = 0; i < 80; i++) {
+            const r = Math.floor((i / 80) * 255);
+            term.write(`\x1b[38;2;${r};0;${255 - r}m\u2588\x1b[0m`);
+          }
+          term.write('\r\n\r\n');
+
+          // RGB background gradient
+          term.write('RGB BG gradient:\r\n');
+          for (let i = 0; i < 80; i++) {
+            const g = Math.floor((i / 80) * 255);
+            term.write(`\x1b[48;2;0;${g};0m \x1b[0m`);
+          }
+        },
+
+        'text-styles': () => {
+          term.write('\x1b[1mBold text\x1b[0m\r\n');
+          term.write('\x1b[3mItalic text\x1b[0m\r\n');
+          term.write('\x1b[1;3mBold + Italic\x1b[0m\r\n');
+          term.write('\x1b[2mFaint/Dim text\x1b[0m\r\n');
+          term.write('\x1b[9mStrikethrough text\x1b[0m\r\n');
+          term.write('\x1b[7mInverse text\x1b[0m\r\n');
+          term.write('\x1b[4mUnderlined text\x1b[0m\r\n');
+          term.write('\x1b[1;3;4mBold + Italic + Underline\x1b[0m\r\n');
+          term.write(
+            '\x1b[1;31mBold Red\x1b[0m \x1b[3;32mItalic Green\x1b[0m \x1b[2;34mFaint Blue\x1b[0m'
+          );
+        },
+
+        'underline-styles': () => {
+          term.write('\x1b[4mSingle underline\x1b[0m\r\n');
+          term.write('\x1b[4:2mDouble underline\x1b[0m\r\n');
+          term.write('\x1b[4:3mCurly underline\x1b[0m\r\n');
+          term.write('\x1b[4:4mDotted underline\x1b[0m\r\n');
+          term.write('\x1b[4:5mDashed underline\x1b[0m\r\n');
+          term.write('\r\n');
+          term.write('\x1b[4m\x1b[58;2;255;0;0mRed underline color\x1b[0m\r\n');
+          term.write('\x1b[4:3m\x1b[58;2;0;255;0mGreen curly underline\x1b[0m\r\n');
+          term.write('\x1b[4m\x1b[58;2;0;100;255mBlue underline color\x1b[0m');
+        },
+
+        'cursor-block': () => {
+          term.write('Cursor is here: ');
+        },
+
+        'cursor-underline': () => {
+          term.write('Cursor is here: ');
+        },
+
+        'cursor-bar': () => {
+          term.write('Cursor is here: ');
+        },
+
+        'wide-chars': () => {
+          term.write('CJK: \u4e16\u754c\u4f60\u597d Hello\r\n');
+          term.write('Japanese: \u3053\u3093\u306b\u3061\u306f\r\n');
+          term.write('Korean: \ud55c\uad6d\uc5b4\r\n');
+          term.write('Mixed: ABC\u4e2d\u6587DEF\r\n');
+          term.write('Emoji: \u2603 \u2764 \u2605 \u263a');
+        },
+
+        'dense-content': () => {
+          // Simulate colorized ls output
+          term.write(
+            '\x1b[1;34mDocuments\x1b[0m  \x1b[1;34mDownloads\x1b[0m  \x1b[1;34mMusic\x1b[0m\r\n'
+          );
+          term.write('\x1b[1;32mscript.sh\x1b[0m  \x1b[0;36mlink.txt\x1b[0m   README.md\r\n');
+          term.write(
+            '\x1b[1;34mPictures\x1b[0m   \x1b[1;34mVideos\x1b[0m     \x1b[1;34m.config\x1b[0m\r\n'
+          );
+          term.write('\r\n');
+          // Simulate git status
+          term.write('\x1b[32m  modified:   lib/renderer.ts\x1b[0m\r\n');
+          term.write('\x1b[31m  deleted:    old-file.ts\x1b[0m\r\n');
+          term.write('\x1b[33m  new file:   e2e/visual-test.html\x1b[0m\r\n');
+          term.write('\r\n');
+          // Prompt
+          term.write('\x1b[1;32muser\x1b[0m@\x1b[1;34mhost\x1b[0m:\x1b[1;36m~/project\x1b[0m$ ');
+        },
+      };
+
+      const fn = scenarios[scenario];
+      if (fn) {
+        fn();
+      } else {
+        term.write(`Unknown scenario: ${scenario}`);
+      }
+
+      // Signal ready after render completes
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          document.title = 'ready';
+        });
+      });
+    </script>
+  </body>
+</html>
