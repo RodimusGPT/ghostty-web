@@ -21,7 +21,7 @@ import type { ITerminalAddon, ITerminalCore } from '../interfaces';
 
 const MINIMUM_COLS = 2;
 const MINIMUM_ROWS = 1;
-const DEFAULT_SCROLLBAR_WIDTH = 15; // Reserve space for future scrollback scrollbar
+const DEFAULT_SCROLLBAR_WIDTH = 0; // Scrollbar renders as canvas overlay, no DOM space needed
 const RESIZE_DEBOUNCE_MS = 100; // Debounce time for ResizeObserver
 
 // ============================================================================
