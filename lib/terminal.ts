@@ -747,7 +747,8 @@ export class Terminal implements ITerminalCore {
     }
 
     // Phase 2: Auto-scroll to bottom on new output (xterm.js behavior)
-    if (this.viewportY !== 0) {
+    // Skip in alternate screen mode — the TUI app controls its own viewport
+    if (this.viewportY !== 0 && !this.wasmTerm?.isAlternateScreen()) {
       this.scrollToBottom();
     }
 
