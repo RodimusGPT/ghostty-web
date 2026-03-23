@@ -62,7 +62,9 @@ Bun.serve({
     open(ws) {
       console.log('WebSocket connected, spawning fly ssh console...');
 
-      const args = ['ssh', 'console', '-a', FLY_APP, '-C', '/bin/bash'];
+      const args = ['ssh', 'console', '-a', FLY_APP];
+      if (FLY_MACHINE) args.push('-s', FLY_MACHINE);
+      args.push('-C', '/bin/bash');
 
       const proc = Bun.spawn([FLY_BIN, ...args], {
         stdin: 'pipe',

@@ -203,6 +203,25 @@ async function main() {
     }
   });
 
+  // Font family switcher
+  const fontSelect = document.getElementById('font-select') as HTMLSelectElement;
+  fontSelect.addEventListener('change', () => {
+    term.options.fontFamily = fontSelect.value;
+    fitAddon.fit();
+    term.focus();
+  });
+
+  // Font size control
+  const fontSizeInput = document.getElementById('font-size') as HTMLInputElement;
+  fontSizeInput.addEventListener('change', () => {
+    const size = Number.parseInt(fontSizeInput.value, 10);
+    if (size >= 8 && size <= 28) {
+      term.options.fontSize = size;
+      fitAddon.fit();
+      term.focus();
+    }
+  });
+
   // Expose for e2e tests
   (window as any).__term = term;
   (window as any).__themes = themes;

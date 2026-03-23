@@ -3,6 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <title>ghostty-web SSH Terminal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=IBM+Plex+Mono:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:ital,wght@0,400;0,700;1,400&family=Source+Code+Pro:ital,wght@0,400;0,700;1,400&family=Inconsolata:wght@400;700&family=Ubuntu+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <style>
       * {
         margin: 0;
@@ -57,13 +60,29 @@
     <header>
       <span class="title">ghostty-web</span>
       <span id="status" class="status connecting">Connecting...</span>
-      <select id="theme-select" style="margin-left:auto;background:#3c3c3c;color:#d4d4d4;border:1px solid #555;padding:2px 6px;border-radius:3px;font-size:12px">
-        <option value="dark">Dark</option>
-        <option value="light">Light</option>
-        <option value="monokai">Monokai</option>
-        <option value="solarized">Solarized Dark</option>
-        <option value="dracula">Dracula</option>
-      </select>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <label style="font-size:11px;color:#888">Theme:</label>
+        <select id="theme-select" style="background:#3c3c3c;color:#d4d4d4;border:1px solid #555;padding:2px 6px;border-radius:3px;font-size:12px">
+          <option value="dark">Dark</option>
+          <option value="light">Light</option>
+          <option value="monokai">Monokai</option>
+          <option value="solarized">Solarized Dark</option>
+          <option value="dracula">Dracula</option>
+        </select>
+        <label style="font-size:11px;color:#888">Font:</label>
+        <select id="font-select" style="background:#3c3c3c;color:#d4d4d4;border:1px solid #555;padding:2px 6px;border-radius:3px;font-size:12px">
+          <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
+          <option value="'Fira Code', monospace">Fira Code</option>
+          <option value="'Source Code Pro', monospace">Source Code Pro</option>
+          <option value="'IBM Plex Mono', monospace">IBM Plex Mono</option>
+          <option value="'Inconsolata', monospace">Inconsolata</option>
+          <option value="'Ubuntu Mono', monospace">Ubuntu Mono</option>
+          <option value="'Courier New', monospace">Courier New</option>
+          <option value="monospace">System Mono</option>
+        </select>
+        <label style="font-size:11px;color:#888">Size:</label>
+        <input id="font-size" type="number" min="8" max="28" value="14" style="width:45px;background:#3c3c3c;color:#d4d4d4;border:1px solid #555;padding:2px 4px;border-radius:3px;font-size:12px">
+      </div>
     </header>
     <div id="terminal-container"></div>
     <script type="module" src="/frontend.js"></script>
