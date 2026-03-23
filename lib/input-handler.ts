@@ -439,7 +439,9 @@ export class InputHandler {
 
       switch (key) {
         case Key.ENTER:
-          simpleOutput = '\r'; // Carriage return
+          if (mods === Mods.NONE) {
+            simpleOutput = '\r'; // Carriage return (Shift+Enter goes to encoder for CSI u)
+          }
           break;
         case Key.TAB:
           if (mods === Mods.SHIFT) {
