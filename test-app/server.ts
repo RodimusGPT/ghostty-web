@@ -122,8 +122,11 @@ Bun.serve({
         try {
           const msg = JSON.parse(message);
           if (msg.type === 'resize') {
-            // fly ssh console doesn't support resize via stdin,
-            // but we can try sending the SIGWINCH-triggering escape
+            // fly ssh console doesn't support PTY resize after start.
+            // Send stty command silently to update the remote terminal size.
+            proc.stdin.write(
+              `stty cols ${msg.cols} rows ${msg.rows} 2>/dev/null; kill -WINCH $$ 2>/dev/null\n`
+            );
             return;
           }
         } catch {

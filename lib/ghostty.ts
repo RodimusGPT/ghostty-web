@@ -147,7 +147,10 @@ export class Ghostty {
             ptr,
             len
           );
-          console.log('[ghostty-vt]', new TextDecoder().decode(bytes));
+          const msg = new TextDecoder().decode(bytes);
+          // Suppress noisy OSC warnings from TUI apps probing terminal capabilities
+          if (msg.includes('warning(osc)')) return;
+          console.log('[ghostty-vt]', msg);
         },
       },
     });

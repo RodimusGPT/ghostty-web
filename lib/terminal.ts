@@ -1818,17 +1818,25 @@ export class Terminal implements ITerminalCore {
     const isAltScreen = this.wasmTerm?.isAlternateScreen() ?? false;
 
     if (isAltScreen) {
-      // Alternate screen: send arrow keys to the application
-      // Applications like vim handle scrolling internally
-      // Standard: ~3 arrow presses per wheel "click"
-      const direction = e.deltaY > 0 ? 'down' : 'up';
-      const count = Math.min(Math.abs(Math.round(e.deltaY / 33)), 5); // Cap at 5
-
-      for (let i = 0; i < count; i++) {
-        if (direction === 'up') {
-          this.dataEmitter.fire('\x1B[A'); // Up arrow
-        } else {
-          this.dataEmitter.fire('\x1B[B'); // Down arrow
+      if (this.wasmTerm?.hasMouseTracking()) {
+        // Mouse tracking active: send SGR mouse scroll events
+        // TUI apps like Claude Code expect these for scrolling
+        const button = e.deltaY < 0 ? 64 : 65; // 64=scroll up, 65=scroll down
+        const rect = this.canvas?.getBoundingClientRect();
+        if (rect && this.renderer) {
+          const col = Math.floor((e.clientX - rect.left) / this.renderer.charWidth) + 1;
+          const row = Math.floor((e.clientY - rect.top) / this.renderer.charHeight) + 1;
+          const count = Math.max(1, Math.min(5, Math.abs(Math.round(e.deltaY / 33))));
+          for (let i = 0; i < count; i++) {
+            this.dataEmitter.fire(`\x1b[<${button};${col};${row}M`);
+          }
+        }
+      } else {
+        // No mouse tracking: send arrow keys as fallback
+        const direction = e.deltaY > 0 ? 'down' : 'up';
+        const count = Math.min(Math.abs(Math.round(e.deltaY / 33)), 5);
+        for (let i = 0; i < count; i++) {
+          this.dataEmitter.fire(direction === 'up' ? '\x1B[A' : '\x1B[B');
         }
       }
     } else {
