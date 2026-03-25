@@ -2845,6 +2845,20 @@ describe('Grapheme Cluster Support', () => {
 
     term.dispose();
   });
+
+  test('disposing after multi-codepoint grapheme lookups does not throw', async () => {
+    const term = await createIsolatedTerminal();
+    term.open(container!);
+
+    // Family emoji uses multiple codepoints joined into a single grapheme cluster.
+    term.write('👨‍👩‍👧‍👦');
+
+    const grapheme = term.wasmTerm!.getGraphemeString(0, 0);
+    expect(grapheme).toBe('👨‍👩‍👧‍👦');
+
+    expect(() => term.dispose()).not.toThrow();
+    expect(() => term.dispose()).not.toThrow();
+  });
 });
 
 // ==========================================================================

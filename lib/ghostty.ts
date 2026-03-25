@@ -389,11 +389,11 @@ export class GhosttyTerminal {
   }
 
   free(): void {
-    if (this.viewportBufferPtr) {
-      this.exports.ghostty_wasm_free_u8_array(this.viewportBufferPtr, this.viewportBufferSize);
-      this.viewportBufferPtr = 0;
-    }
+    if (!this.handle) return;
+
+    this.invalidateBuffers();
     this.exports.ghostty_terminal_free(this.handle);
+    this.handle = 0 as TerminalHandle;
   }
 
   // ==========================================================================
