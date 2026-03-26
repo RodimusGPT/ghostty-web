@@ -329,6 +329,12 @@ export class GhosttyTerminal {
     if (!this.handle) throw new Error('Failed to create terminal');
 
     this.initCellPool();
+
+    // Zero-initialize cells by clearing the screen through the VT parser.
+    // The WASM allocator may reuse memory from a previously freed terminal,
+    // leaving stale cell data (text, colors, attributes) that the renderer
+    // would briefly display as "ghost content" on the first frame.
+    this.write('\x1b[2J\x1b[3J\x1b[H');
   }
 
   get cols(): number {
