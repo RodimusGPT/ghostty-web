@@ -430,19 +430,27 @@ export class SelectionManager {
    */
   private attachEventListeners(): void {
     const canvas = this.renderer.getCanvas();
+    // Register mouse handlers on the container instead of the canvas so
+    // that clicks in the gap below the rendered content (where the canvas
+    // is CSS-stretched beyond the cell grid) still start a selection.
+    const container = canvas.parentElement ?? canvas;
+
+    /** Convert a MouseEvent to canvas-relative pixel coordinates. */
+    const canvasOffset = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    };
 
     // Mouse down - start selection or clear existing
-    canvas.addEventListener('mousedown', (e: MouseEvent) => {
+    container.addEventListener('mousedown', (e: MouseEvent) => {
       if (e.button === 0) {
         // Left click only
 
         // CRITICAL: Focus the terminal so it can receive keyboard input
-        // The canvas doesn't have tabindex, but the parent container does
-        if (canvas.parentElement) {
-          canvas.parentElement.focus();
-        }
+        container.focus();
 
-        const cell = this.pixelToCell(e.offsetX, e.offsetY);
+        const pos = canvasOffset(e);
+        const cell = this.pixelToCell(pos.x, pos.y);
 
         // Always clear previous selection on new click
         const hadSelection = this.hasSelection();
@@ -455,19 +463,20 @@ export class SelectionManager {
         this.selectionStart = { col: cell.col, absoluteRow };
         this.selectionEnd = { col: cell.col, absoluteRow };
         this.isSelecting = true;
-        this.mouseDownX = e.offsetX;
-        this.mouseDownY = e.offsetY;
+        this.mouseDownX = pos.x;
+        this.mouseDownY = pos.y;
         this.dragThresholdMet = false;
       }
     });
 
-    // Mouse move on canvas - update selection
-    canvas.addEventListener('mousemove', (e: MouseEvent) => {
+    // Mouse move on container - update selection
+    container.addEventListener('mousemove', (e: MouseEvent) => {
       if (this.isSelecting) {
+        const pos = canvasOffset(e);
         // Check if drag threshold has been met
         if (!this.dragThresholdMet) {
-          const dx = e.offsetX - this.mouseDownX;
-          const dy = e.offsetY - this.mouseDownY;
+          const dx = pos.x - this.mouseDownX;
+          const dy = pos.y - this.mouseDownY;
           // Use 50% of cell width as threshold to scale with font size
           const threshold = this.renderer.getMetrics().width * 0.5;
           if (dx * dx + dy * dy < threshold * threshold) {
@@ -479,13 +488,13 @@ export class SelectionManager {
         // Mark current selection rows as dirty before updating
         this.markCurrentSelectionDirty();
 
-        const cell = this.pixelToCell(e.offsetX, e.offsetY);
+        const cell = this.pixelToCell(pos.x, pos.y);
         const absoluteRow = this.viewportRowToAbsolute(cell.row);
         this.selectionEnd = { col: cell.col, absoluteRow };
         this.requestRender();
 
         // Check if near edges for auto-scroll
-        this.updateAutoScroll(e.offsetY, canvas.clientHeight);
+        this.updateAutoScroll(pos.y, canvas.clientHeight);
       }
     });
 
@@ -596,11 +605,12 @@ export class SelectionManager {
 
     // Handle click events for double-click (word) and triple-click (line) selection
     // Use event.detail which browsers set to click count (1, 2, 3, etc.)
-    canvas.addEventListener('click', (e: MouseEvent) => {
+    container.addEventListener('click', (e: MouseEvent) => {
       // event.detail: 1 = single, 2 = double, 3 = triple click
       if (e.detail === 2) {
         // Double-click - select word
-        const cell = this.pixelToCell(e.offsetX, e.offsetY);
+        const pos = canvasOffset(e);
+        const cell = this.pixelToCell(pos.x, pos.y);
         const word = this.getWordAtCell(cell.col, cell.row);
 
         if (word) {
@@ -617,7 +627,8 @@ export class SelectionManager {
         }
       } else if (e.detail >= 3) {
         // Triple-click (or more) - select line content (like native Ghostty)
-        const cell = this.pixelToCell(e.offsetX, e.offsetY);
+        const pos = canvasOffset(e);
+        const cell = this.pixelToCell(pos.x, pos.y);
         const absoluteRow = this.viewportRowToAbsolute(cell.row);
 
         // Find actual line length (exclude trailing empty cells)
@@ -719,9 +730,9 @@ export class SelectionManager {
       // Don't prevent default - let browser show the context menu on the textarea
     };
 
-    canvas.addEventListener('contextmenu', this.boundContextMenuHandler);
+    container.addEventListener('contextmenu', this.boundContextMenuHandler);
 
-    // Click outside canvas - clear selection
+    // Click outside container - clear selection
     // This allows users to deselect by clicking anywhere outside the terminal
     this.boundClickHandler = (e: MouseEvent) => {
       // Don't clear selection if we're actively selecting
@@ -730,18 +741,18 @@ export class SelectionManager {
       }
 
       // A click is only valid for clearing selection if BOTH mousedown and mouseup
-      // happened outside the canvas. If mousedown was inside (drag selection),
+      // happened outside the container. If mousedown was inside (drag selection),
       // don't clear even if mouseup/click is outside.
-      const mouseDownWasInCanvas =
-        this.mouseDownTarget && canvas.contains(this.mouseDownTarget as Node);
-      if (mouseDownWasInCanvas) {
+      const mouseDownWasInContainer =
+        this.mouseDownTarget && container.contains(this.mouseDownTarget as Node);
+      if (mouseDownWasInContainer) {
         return;
       }
 
-      // Check if the click is outside the canvas
+      // Check if the click is outside the container
       const target = e.target as Node;
-      if (!canvas.contains(target)) {
-        // Clicked outside the canvas - clear selection
+      if (!container.contains(target)) {
+        // Clicked outside the terminal - clear selection
         if (this.hasSelection()) {
           this.clearSelection();
         }
