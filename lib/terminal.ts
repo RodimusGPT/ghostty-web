@@ -1594,11 +1594,14 @@ export class Terminal implements ITerminalCore {
   private processMouseMove(e: MouseEvent): void {
     if (!this.canvas || !this.renderer || !this.linkDetector || !this.wasmTerm) return;
 
-    // Convert mouse coordinates to terminal cell position
-    // Use rect dimensions to account for canvas stretching (style 100%)
+    // Convert mouse coordinates to terminal cell position.
+    // Scale from CSS display space to content space to handle canvas 100% stretch.
     const rect = this.canvas.getBoundingClientRect();
-    const x = Math.floor(((e.clientX - rect.left) * this.cols) / rect.width);
-    const y = Math.floor(((e.clientY - rect.top) * this.rows) / rect.height);
+    const metrics = this.renderer.getMetrics();
+    const scaleX = (this.cols * metrics.width) / rect.width;
+    const scaleY = (this.rows * metrics.height) / rect.height;
+    const x = Math.floor(((e.clientX - rect.left) * scaleX) / metrics.width);
+    const y = Math.floor(((e.clientY - rect.top) * scaleY) / metrics.height);
 
     // Get hyperlink_id directly from the cell at this position
     // Must account for viewportY (scrollback position)
@@ -1767,10 +1770,13 @@ export class Terminal implements ITerminalCore {
     // rather than relying on cached hover state (avoids async races)
     if (!this.canvas || !this.renderer || !this.linkDetector || !this.wasmTerm) return;
 
-    // Get click position (account for canvas stretching)
+    // Get click position — scale from CSS display space to content space
     const rect = this.canvas.getBoundingClientRect();
-    const x = Math.floor(((e.clientX - rect.left) * this.cols) / rect.width);
-    const y = Math.floor(((e.clientY - rect.top) * this.rows) / rect.height);
+    const metrics = this.renderer.getMetrics();
+    const scaleX = (this.cols * metrics.width) / rect.width;
+    const scaleY = (this.rows * metrics.height) / rect.height;
+    const x = Math.floor(((e.clientX - rect.left) * scaleX) / metrics.width);
+    const y = Math.floor(((e.clientY - rect.top) * scaleY) / metrics.height);
 
     // Calculate buffer row (same logic as processMouseMove)
     const viewportRow = y;
@@ -1829,8 +1835,11 @@ export class Terminal implements ITerminalCore {
         const button = e.deltaY < 0 ? 64 : 65; // 64=scroll up, 65=scroll down
         const rect = this.canvas?.getBoundingClientRect();
         if (rect && this.renderer) {
-          const col = Math.floor(((e.clientX - rect.left) * this.cols) / rect.width) + 1;
-          const row = Math.floor(((e.clientY - rect.top) * this.rows) / rect.height) + 1;
+          const wMetrics = this.renderer.getMetrics();
+          const wScaleX = (this.cols * wMetrics.width) / rect.width;
+          const wScaleY = (this.rows * wMetrics.height) / rect.height;
+          const col = Math.floor(((e.clientX - rect.left) * wScaleX) / wMetrics.width) + 1;
+          const row = Math.floor(((e.clientY - rect.top) * wScaleY) / wMetrics.height) + 1;
           const count = Math.max(1, Math.min(5, Math.abs(Math.round(e.deltaY / 33))));
           for (let i = 0; i < count; i++) {
             this.dataEmitter.fire(`\x1b[<${button};${col};${row}M`);
