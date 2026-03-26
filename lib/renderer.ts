@@ -826,13 +826,7 @@ export class CanvasRenderer implements IRenderer {
    * Render box-drawing characters (U+2500–U+257F) as pixel-perfect lines.
    * Uses fillRect for crisp rendering without anti-aliasing.
    */
-  private renderBoxDrawing(
-    cp: number,
-    x: number,
-    y: number,
-    w: number,
-    h: number
-  ): void {
+  private renderBoxDrawing(cp: number, x: number, y: number, w: number, h: number): void {
     const mx = x + w / 2; // midpoint X
     const my = y + h / 2; // midpoint Y
     const lw = 1; // line width (thin)
@@ -850,44 +844,178 @@ export class CanvasRenderer implements IRenderer {
 
     switch (cp) {
       // Single lines
-      case 0x2500: left(my, false); right(my, false); break; // ─
-      case 0x2501: left(my, true); right(my, true); break; // ━
-      case 0x2502: up(mx, false); down(mx, false); break; // │
-      case 0x2503: up(mx, true); down(mx, true); break; // ┃
-      case 0x250c: right(my, false); down(mx, false); break; // ┌
-      case 0x250d: right(my, true); down(mx, false); break; // ┍
-      case 0x250e: right(my, false); down(mx, true); break; // ┎
-      case 0x250f: right(my, true); down(mx, true); break; // ┏
-      case 0x2510: left(my, false); down(mx, false); break; // ┐
-      case 0x2511: left(my, true); down(mx, false); break; // ┑
-      case 0x2512: left(my, false); down(mx, true); break; // ┒
-      case 0x2513: left(my, true); down(mx, true); break; // ┓
-      case 0x2514: right(my, false); up(mx, false); break; // └
-      case 0x2515: right(my, true); up(mx, false); break; // ┕
-      case 0x2516: right(my, false); up(mx, true); break; // ┖
-      case 0x2517: right(my, true); up(mx, true); break; // ┗
-      case 0x2518: left(my, false); up(mx, false); break; // ┘
-      case 0x2519: left(my, true); up(mx, false); break; // ┙
-      case 0x251a: left(my, false); up(mx, true); break; // ┚
-      case 0x251b: left(my, true); up(mx, true); break; // ┛
-      case 0x251c: right(my, false); up(mx, false); down(mx, false); break; // ├
-      case 0x251d: right(my, true); up(mx, false); down(mx, false); break; // ┝
-      case 0x2520: right(my, false); up(mx, true); down(mx, true); break; // ┠
-      case 0x2523: right(my, true); up(mx, true); down(mx, true); break; // ┣
-      case 0x2524: left(my, false); up(mx, false); down(mx, false); break; // ┤
-      case 0x2525: left(my, true); up(mx, false); down(mx, false); break; // ┥
-      case 0x2528: left(my, false); up(mx, true); down(mx, true); break; // ┨
-      case 0x252b: left(my, true); up(mx, true); down(mx, true); break; // ┫
-      case 0x252c: left(my, false); right(my, false); down(mx, false); break; // ┬
-      case 0x252f: left(my, true); right(my, true); down(mx, false); break; // ┯
-      case 0x2530: left(my, false); right(my, false); down(mx, true); break; // ┰
-      case 0x2533: left(my, true); right(my, true); down(mx, true); break; // ┳
-      case 0x2534: left(my, false); right(my, false); up(mx, false); break; // ┴
-      case 0x2537: left(my, true); right(my, true); up(mx, false); break; // ┷
-      case 0x2538: left(my, false); right(my, false); up(mx, true); break; // ┸
-      case 0x253b: left(my, true); right(my, true); up(mx, true); break; // ┻
-      case 0x253c: left(my, false); right(my, false); up(mx, false); down(mx, false); break; // ┼
-      case 0x254b: left(my, true); right(my, true); up(mx, true); down(mx, true); break; // ╋
+      case 0x2500:
+        left(my, false);
+        right(my, false);
+        break; // ─
+      case 0x2501:
+        left(my, true);
+        right(my, true);
+        break; // ━
+      case 0x2502:
+        up(mx, false);
+        down(mx, false);
+        break; // │
+      case 0x2503:
+        up(mx, true);
+        down(mx, true);
+        break; // ┃
+      case 0x250c:
+        right(my, false);
+        down(mx, false);
+        break; // ┌
+      case 0x250d:
+        right(my, true);
+        down(mx, false);
+        break; // ┍
+      case 0x250e:
+        right(my, false);
+        down(mx, true);
+        break; // ┎
+      case 0x250f:
+        right(my, true);
+        down(mx, true);
+        break; // ┏
+      case 0x2510:
+        left(my, false);
+        down(mx, false);
+        break; // ┐
+      case 0x2511:
+        left(my, true);
+        down(mx, false);
+        break; // ┑
+      case 0x2512:
+        left(my, false);
+        down(mx, true);
+        break; // ┒
+      case 0x2513:
+        left(my, true);
+        down(mx, true);
+        break; // ┓
+      case 0x2514:
+        right(my, false);
+        up(mx, false);
+        break; // └
+      case 0x2515:
+        right(my, true);
+        up(mx, false);
+        break; // ┕
+      case 0x2516:
+        right(my, false);
+        up(mx, true);
+        break; // ┖
+      case 0x2517:
+        right(my, true);
+        up(mx, true);
+        break; // ┗
+      case 0x2518:
+        left(my, false);
+        up(mx, false);
+        break; // ┘
+      case 0x2519:
+        left(my, true);
+        up(mx, false);
+        break; // ┙
+      case 0x251a:
+        left(my, false);
+        up(mx, true);
+        break; // ┚
+      case 0x251b:
+        left(my, true);
+        up(mx, true);
+        break; // ┛
+      case 0x251c:
+        right(my, false);
+        up(mx, false);
+        down(mx, false);
+        break; // ├
+      case 0x251d:
+        right(my, true);
+        up(mx, false);
+        down(mx, false);
+        break; // ┝
+      case 0x2520:
+        right(my, false);
+        up(mx, true);
+        down(mx, true);
+        break; // ┠
+      case 0x2523:
+        right(my, true);
+        up(mx, true);
+        down(mx, true);
+        break; // ┣
+      case 0x2524:
+        left(my, false);
+        up(mx, false);
+        down(mx, false);
+        break; // ┤
+      case 0x2525:
+        left(my, true);
+        up(mx, false);
+        down(mx, false);
+        break; // ┥
+      case 0x2528:
+        left(my, false);
+        up(mx, true);
+        down(mx, true);
+        break; // ┨
+      case 0x252b:
+        left(my, true);
+        up(mx, true);
+        down(mx, true);
+        break; // ┫
+      case 0x252c:
+        left(my, false);
+        right(my, false);
+        down(mx, false);
+        break; // ┬
+      case 0x252f:
+        left(my, true);
+        right(my, true);
+        down(mx, false);
+        break; // ┯
+      case 0x2530:
+        left(my, false);
+        right(my, false);
+        down(mx, true);
+        break; // ┰
+      case 0x2533:
+        left(my, true);
+        right(my, true);
+        down(mx, true);
+        break; // ┳
+      case 0x2534:
+        left(my, false);
+        right(my, false);
+        up(mx, false);
+        break; // ┴
+      case 0x2537:
+        left(my, true);
+        right(my, true);
+        up(mx, false);
+        break; // ┷
+      case 0x2538:
+        left(my, false);
+        right(my, false);
+        up(mx, true);
+        break; // ┸
+      case 0x253b:
+        left(my, true);
+        right(my, true);
+        up(mx, true);
+        break; // ┻
+      case 0x253c:
+        left(my, false);
+        right(my, false);
+        up(mx, false);
+        down(mx, false);
+        break; // ┼
+      case 0x254b:
+        left(my, true);
+        right(my, true);
+        up(mx, true);
+        down(mx, true);
+        break; // ╋
       // Double lines
       case 0x2550: // ═
         this.ctx.fillRect(x, my - 2, w, lw);
@@ -993,13 +1121,7 @@ export class CanvasRenderer implements IRenderer {
    * Render Unicode block elements (U+2580–U+259F) as pixel-perfect rectangles.
    * This avoids anti-aliasing gaps between adjacent cells that font rendering causes.
    */
-  private renderBlockElement(
-    cp: number,
-    x: number,
-    y: number,
-    w: number,
-    h: number
-  ): void {
+  private renderBlockElement(cp: number, x: number, y: number, w: number, h: number): void {
     const hw = w / 2;
     const hh = h / 2;
 
@@ -1008,43 +1130,43 @@ export class CanvasRenderer implements IRenderer {
         this.ctx.fillRect(x, y, w, hh);
         break;
       case 0x2581: // ▁ lower 1/8
-        this.ctx.fillRect(x, y + h * 7 / 8, w, h / 8);
+        this.ctx.fillRect(x, y + (h * 7) / 8, w, h / 8);
         break;
       case 0x2582: // ▂ lower 1/4
-        this.ctx.fillRect(x, y + h * 3 / 4, w, h / 4);
+        this.ctx.fillRect(x, y + (h * 3) / 4, w, h / 4);
         break;
       case 0x2583: // ▃ lower 3/8
-        this.ctx.fillRect(x, y + h * 5 / 8, w, h * 3 / 8);
+        this.ctx.fillRect(x, y + (h * 5) / 8, w, (h * 3) / 8);
         break;
       case 0x2584: // ▄ lower half
         this.ctx.fillRect(x, y + hh, w, hh);
         break;
       case 0x2585: // ▅ lower 5/8
-        this.ctx.fillRect(x, y + h * 3 / 8, w, h * 5 / 8);
+        this.ctx.fillRect(x, y + (h * 3) / 8, w, (h * 5) / 8);
         break;
       case 0x2586: // ▆ lower 3/4
-        this.ctx.fillRect(x, y + h / 4, w, h * 3 / 4);
+        this.ctx.fillRect(x, y + h / 4, w, (h * 3) / 4);
         break;
       case 0x2587: // ▇ lower 7/8
-        this.ctx.fillRect(x, y + h / 8, w, h * 7 / 8);
+        this.ctx.fillRect(x, y + h / 8, w, (h * 7) / 8);
         break;
       case 0x2588: // █ full block
         this.ctx.fillRect(x, y, w, h);
         break;
       case 0x2589: // ▉ left 7/8
-        this.ctx.fillRect(x, y, w * 7 / 8, h);
+        this.ctx.fillRect(x, y, (w * 7) / 8, h);
         break;
       case 0x258a: // ▊ left 3/4
-        this.ctx.fillRect(x, y, w * 3 / 4, h);
+        this.ctx.fillRect(x, y, (w * 3) / 4, h);
         break;
       case 0x258b: // ▋ left 5/8
-        this.ctx.fillRect(x, y, w * 5 / 8, h);
+        this.ctx.fillRect(x, y, (w * 5) / 8, h);
         break;
       case 0x258c: // ▌ left half
         this.ctx.fillRect(x, y, hw, h);
         break;
       case 0x258d: // ▍ left 3/8
-        this.ctx.fillRect(x, y, w * 3 / 8, h);
+        this.ctx.fillRect(x, y, (w * 3) / 8, h);
         break;
       case 0x258e: // ▎ left 1/4
         this.ctx.fillRect(x, y, w / 4, h);
@@ -1071,7 +1193,7 @@ export class CanvasRenderer implements IRenderer {
         this.ctx.fillRect(x, y, w, h / 8);
         break;
       case 0x2595: // ▕ right 1/8
-        this.ctx.fillRect(x + w * 7 / 8, y, w / 8, h);
+        this.ctx.fillRect(x + (w * 7) / 8, y, w / 8, h);
         break;
       // Quadrant block elements (U+2596–U+259F)
       case 0x2596: // ▖ lower left
