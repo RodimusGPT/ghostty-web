@@ -496,8 +496,8 @@ export class WebglRenderer implements IRenderer {
     const cssHeight = rows * this.metrics.height;
     this.canvas.width = cssWidth * this.devicePixelRatio;
     this.canvas.height = cssHeight * this.devicePixelRatio;
-    this.canvas.style.width = `${cssWidth}px`;
-    this.canvas.style.height = `${cssHeight}px`;
+    this.canvas.style.width = '100%';
+    this.canvas.style.height = '100%';
   }
 
   remeasureFont(): void {

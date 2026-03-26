@@ -334,8 +334,8 @@ export class Terminal implements ITerminalCore {
     const metrics = this.renderer.getMetrics();
     this.canvas.width = metrics.width * this.cols;
     this.canvas.height = metrics.height * this.rows;
-    this.canvas.style.width = `${metrics.width * this.cols}px`;
-    this.canvas.style.height = `${metrics.height * this.rows}px`;
+    this.canvas.style.width = '100%';
+    this.canvas.style.height = '100%';
 
     // Force full re-render with new font
     this.renderer.render(this.wasmTerm, true, this.viewportY, this);
@@ -571,10 +571,14 @@ export class Terminal implements ITerminalCore {
       const mouseConfig: MouseTrackingConfig = {
         hasMouseTracking: () => wasmTerm?.hasMouseTracking() ?? false,
         hasSgrMouseMode: () => wasmTerm?.getMode(1006, false) ?? true, // SGR extended mode
-        getCellDimensions: () => ({
-          width: renderer.charWidth,
-          height: renderer.charHeight,
-        }),
+        getCellDimensions: () => {
+          // Use displayed canvas size to account for 100% CSS stretch
+          const rect = canvas.getBoundingClientRect();
+          return {
+            width: rect.width / (this.cols || 1),
+            height: rect.height / (this.rows || 1),
+          };
+        },
         getCanvasOffset: () => {
           const rect = canvas.getBoundingClientRect();
           return { left: rect.left, top: rect.top };
@@ -861,8 +865,8 @@ export class Terminal implements ITerminalCore {
       const metrics = this.renderer!.getMetrics();
       this.canvas!.width = metrics.width * cols;
       this.canvas!.height = metrics.height * rows;
-      this.canvas!.style.width = `${metrics.width * cols}px`;
-      this.canvas!.style.height = `${metrics.height * rows}px`;
+      this.canvas!.style.width = '100%';
+      this.canvas!.style.height = '100%';
 
       // Fire resize event
       this.resizeEmitter.fire({ cols, rows });
@@ -1591,9 +1595,10 @@ export class Terminal implements ITerminalCore {
     if (!this.canvas || !this.renderer || !this.linkDetector || !this.wasmTerm) return;
 
     // Convert mouse coordinates to terminal cell position
+    // Use rect dimensions to account for canvas stretching (style 100%)
     const rect = this.canvas.getBoundingClientRect();
-    const x = Math.floor((e.clientX - rect.left) / this.renderer.charWidth);
-    const y = Math.floor((e.clientY - rect.top) / this.renderer.charHeight);
+    const x = Math.floor(((e.clientX - rect.left) * this.cols) / rect.width);
+    const y = Math.floor(((e.clientY - rect.top) * this.rows) / rect.height);
 
     // Get hyperlink_id directly from the cell at this position
     // Must account for viewportY (scrollback position)
@@ -1762,10 +1767,10 @@ export class Terminal implements ITerminalCore {
     // rather than relying on cached hover state (avoids async races)
     if (!this.canvas || !this.renderer || !this.linkDetector || !this.wasmTerm) return;
 
-    // Get click position
+    // Get click position (account for canvas stretching)
     const rect = this.canvas.getBoundingClientRect();
-    const x = Math.floor((e.clientX - rect.left) / this.renderer.charWidth);
-    const y = Math.floor((e.clientY - rect.top) / this.renderer.charHeight);
+    const x = Math.floor(((e.clientX - rect.left) * this.cols) / rect.width);
+    const y = Math.floor(((e.clientY - rect.top) * this.rows) / rect.height);
 
     // Calculate buffer row (same logic as processMouseMove)
     const viewportRow = y;
@@ -1824,8 +1829,8 @@ export class Terminal implements ITerminalCore {
         const button = e.deltaY < 0 ? 64 : 65; // 64=scroll up, 65=scroll down
         const rect = this.canvas?.getBoundingClientRect();
         if (rect && this.renderer) {
-          const col = Math.floor((e.clientX - rect.left) / this.renderer.charWidth) + 1;
-          const row = Math.floor((e.clientY - rect.top) / this.renderer.charHeight) + 1;
+          const col = Math.floor(((e.clientX - rect.left) * this.cols) / rect.width) + 1;
+          const row = Math.floor(((e.clientY - rect.top) * this.rows) / rect.height) + 1;
           const count = Math.max(1, Math.min(5, Math.abs(Math.round(e.deltaY / 33))));
           for (let i = 0; i < count; i++) {
             this.dataEmitter.fire(`\x1b[<${button};${col};${row}M`);

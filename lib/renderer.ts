@@ -289,9 +289,11 @@ export class CanvasRenderer implements IRenderer {
     const cssWidth = cols * this.metrics.width;
     const cssHeight = rows * this.metrics.height;
 
-    // Set CSS size (what user sees)
-    this.canvas.style.width = `${cssWidth}px`;
-    this.canvas.style.height = `${cssHeight}px`;
+    // Fill the container so mouse events reach the canvas everywhere.
+    // The internal buffer stays at exact cell dimensions; extra pixels
+    // beyond the last row/column render as background.
+    this.canvas.style.width = '100%';
+    this.canvas.style.height = '100%';
 
     // Set actual canvas size (scaled for DPI)
     this.canvas.width = cssWidth * this.devicePixelRatio;

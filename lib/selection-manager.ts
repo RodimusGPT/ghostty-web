@@ -849,10 +849,12 @@ export class SelectionManager {
    * Convert pixel coordinates to terminal cell coordinates
    */
   private pixelToCell(x: number, y: number): { col: number; row: number } {
-    const metrics = this.renderer.getMetrics();
-
-    const col = Math.floor(x / metrics.width);
-    const row = Math.floor(y / metrics.height);
+    // Map CSS display coordinates to grid cells.  The canvas may be
+    // stretched to fill its container (style 100%), so we derive the
+    // effective cell size from the displayed element dimensions.
+    const canvas = this.renderer.getCanvas();
+    const col = Math.floor((x * this.terminal.cols) / canvas.offsetWidth);
+    const row = Math.floor((y * this.terminal.rows) / canvas.offsetHeight);
 
     // Clamp to terminal bounds
     return {
