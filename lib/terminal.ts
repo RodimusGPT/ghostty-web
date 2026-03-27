@@ -633,7 +633,6 @@ export class Terminal implements ITerminalCore {
       this.selectionManager = new SelectionManager(
         this,
         this.renderer,
-        this.wasmTerm,
         this.textarea
       );
 

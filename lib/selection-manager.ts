@@ -35,8 +35,12 @@ export interface SelectionCoordinates {
 export class SelectionManager {
   private terminal: Terminal;
   private renderer: IRenderer;
-  private wasmTerm: GhosttyTerminal;
   private textarea: HTMLTextAreaElement;
+
+  /** Always read the live wasmTerm from the terminal so we track reset(). */
+  private get wasmTerm(): GhosttyTerminal {
+    return this.terminal.wasmTerm!;
+  }
 
   // Selection state - coordinates are in ABSOLUTE buffer space (viewportY + viewportRow)
   // This ensures selection persists correctly when scrolling
@@ -99,15 +103,9 @@ export class SelectionManager {
   private static readonly AUTO_SCROLL_SPEED = 3; // lines per interval
   private static readonly AUTO_SCROLL_INTERVAL = 50; // ms between scroll steps
 
-  constructor(
-    terminal: Terminal,
-    renderer: IRenderer,
-    wasmTerm: GhosttyTerminal,
-    textarea: HTMLTextAreaElement
-  ) {
+  constructor(terminal: Terminal, renderer: IRenderer, textarea: HTMLTextAreaElement) {
     this.terminal = terminal;
     this.renderer = renderer;
-    this.wasmTerm = wasmTerm;
     this.textarea = textarea;
 
     // Attach mouse event listeners
