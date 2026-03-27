@@ -259,10 +259,9 @@ export class SelectionManager {
    * Select all text in the terminal
    */
   selectAll(): void {
-    const dims = this.wasmTerm.getDimensions();
     const viewportY = this.getViewportY();
     this.selectionStart = { col: 0, absoluteRow: viewportY };
-    this.selectionEnd = { col: dims.cols - 1, absoluteRow: viewportY + dims.rows - 1 };
+    this.selectionEnd = { col: this.terminal.cols - 1, absoluteRow: viewportY + this.terminal.rows - 1 };
     this.requestRender();
     this.selectionChangedEmitter.fire();
   }
@@ -273,22 +272,21 @@ export class SelectionManager {
    */
   select(column: number, row: number, length: number): void {
     // Clamp to valid ranges
-    const dims = this.wasmTerm.getDimensions();
-    row = Math.max(0, Math.min(row, dims.rows - 1));
-    column = Math.max(0, Math.min(column, dims.cols - 1));
+    row = Math.max(0, Math.min(row, this.terminal.rows - 1));
+    column = Math.max(0, Math.min(column, this.terminal.cols - 1));
 
     // Calculate end position
     let endRow = row;
     let endCol = column + length - 1;
 
     // Handle wrapping if selection extends past end of line
-    while (endCol >= dims.cols) {
-      endCol -= dims.cols;
+    while (endCol >= this.terminal.cols) {
+      endCol -= this.terminal.cols;
       endRow++;
     }
 
     // Clamp end row
-    endRow = Math.min(endRow, dims.rows - 1);
+    endRow = Math.min(endRow, this.terminal.rows - 1);
 
     // Convert viewport rows to absolute rows
     const viewportY = this.getViewportY();
@@ -303,11 +301,9 @@ export class SelectionManager {
    * xterm.js compatible API
    */
   selectLines(start: number, end: number): void {
-    const dims = this.wasmTerm.getDimensions();
-
     // Clamp to valid row ranges
-    start = Math.max(0, Math.min(start, dims.rows - 1));
-    end = Math.max(0, Math.min(end, dims.rows - 1));
+    start = Math.max(0, Math.min(start, this.terminal.rows - 1));
+    end = Math.max(0, Math.min(end, this.terminal.rows - 1));
 
     // Ensure start <= end
     if (start > end) {
@@ -316,7 +312,7 @@ export class SelectionManager {
 
     // Convert viewport rows to absolute rows
     this.selectionStart = { col: 0, absoluteRow: this.viewportRowToAbsolute(start) };
-    this.selectionEnd = { col: dims.cols - 1, absoluteRow: this.viewportRowToAbsolute(end) };
+    this.selectionEnd = { col: this.terminal.cols - 1, absoluteRow: this.viewportRowToAbsolute(end) };
     this.requestRender();
     this.selectionChangedEmitter.fire();
   }
@@ -823,7 +819,6 @@ export class SelectionManager {
       // Extend selection in the scroll direction
       // Key insight: we need to EXTEND the selection, not reset it to viewport edge
       if (this.selectionEnd) {
-        const dims = this.wasmTerm.getDimensions();
         if (this.autoScrollDirection < 0) {
           // Scrolling up - extend selection upward (decrease absoluteRow)
           // Set to top of viewport, but only if it extends the selection
@@ -834,9 +829,9 @@ export class SelectionManager {
         } else {
           // Scrolling down - extend selection downward (increase absoluteRow)
           // Set to bottom of viewport, but only if it extends the selection
-          const bottomAbsoluteRow = this.viewportRowToAbsolute(dims.rows - 1);
+          const bottomAbsoluteRow = this.viewportRowToAbsolute(this.terminal.rows - 1);
           if (bottomAbsoluteRow > this.selectionEnd.absoluteRow) {
-            this.selectionEnd = { col: dims.cols - 1, absoluteRow: bottomAbsoluteRow };
+            this.selectionEnd = { col: this.terminal.cols - 1, absoluteRow: bottomAbsoluteRow };
           }
         }
       }
@@ -899,9 +894,9 @@ export class SelectionManager {
     let startRow = this.absoluteRowToViewport(startAbsRow);
     let endRow = this.absoluteRowToViewport(endAbsRow);
 
-    // Clamp to visible viewport range
-    const dims = this.wasmTerm.getDimensions();
-    const maxRow = dims.rows - 1;
+    // Clamp to visible viewport range — use terminal.rows which is always
+    // up-to-date after Terminal.resize(), unlike wasmTerm.getDimensions().
+    const maxRow = this.terminal.rows - 1;
 
     // If entire selection is outside viewport, return null
     if (endRow < 0 || startRow > maxRow) {
@@ -915,7 +910,7 @@ export class SelectionManager {
     }
     if (endRow > maxRow) {
       endRow = maxRow;
-      endCol = dims.cols - 1; // Selection extends to end of last visible row
+      endCol = this.terminal.cols - 1; // Selection extends to end of last visible row
     }
 
     return { startCol, startRow, endCol, endRow };
