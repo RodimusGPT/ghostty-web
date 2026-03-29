@@ -403,11 +403,39 @@ export class GhosttyTerminal {
 
   resize(cols: number, rows: number): void {
     if (cols === this._cols && rows === this._rows) return;
+    const oldCols = this._cols;
+    const oldRows = this._rows;
     this._cols = cols;
     this._rows = rows;
     this.exports.ghostty_terminal_resize(this.handle, cols, rows);
     this.invalidateBuffers();
     this.initCellPool();
+
+    // Ghostty's WASM resize reflows existing content but does not zero-initialize
+    // newly expanded cells. The WASM allocator may hand back memory containing
+    // stale data (freed terminal buffers, heap metadata) that renders as garbage.
+    //
+    // Fix: use VT escape sequences to erase only the newly expanded regions.
+    // DECSC/DECRC save and restore the cursor so the terminal state is preserved.
+    // Existing content (within old dimensions) is untouched.
+    if (cols > oldCols || rows > oldRows) {
+      let seq = '\x1b7'; // DECSC — save cursor
+
+      // Erase extended columns on each existing row
+      if (cols > oldCols) {
+        for (let y = 0; y < Math.min(oldRows, rows); y++) {
+          seq += `\x1b[${y + 1};${oldCols + 1}H\x1b[K`; // CUP + EL (erase to EOL)
+        }
+      }
+
+      // Erase new rows below old content
+      if (rows > oldRows) {
+        seq += `\x1b[${oldRows + 1};1H\x1b[J`; // CUP + ED (erase to end of screen)
+      }
+
+      seq += '\x1b8'; // DECRC — restore cursor
+      this.write(seq);
+    }
   }
 
   /**
