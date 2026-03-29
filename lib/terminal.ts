@@ -18,7 +18,7 @@
 import { BufferNamespace } from './buffer';
 import { EventEmitter } from './event-emitter';
 import type { Ghostty, GhosttyCell, GhosttyTerminal, GhosttyTerminalConfig } from './ghostty';
-import { getGhostty } from './index';
+import { createGhostty } from './index';
 import { InputHandler, type MouseTrackingConfig } from './input-handler';
 import type {
   IBufferNamespace,
@@ -196,8 +196,9 @@ export class Terminal implements ITerminalCore {
   private readonly SCROLLBAR_FADE_DURATION_MS = 200; // 200ms fade animation
 
   constructor(options: ITerminalOptions = {}) {
-    // Use provided Ghostty instance (for test isolation) or get module-level instance
-    this.ghostty = options.ghostty ?? getGhostty();
+    // If a Ghostty instance is provided (for test isolation), use it directly.
+    // Otherwise, open() will create an isolated instance via createGhostty().
+    this.ghostty = options.ghostty;
 
     // Create base options object with all defaults (excluding ghostty)
     const baseOptions = {
@@ -450,9 +451,10 @@ export class Terminal implements ITerminalCore {
    * Open terminal in a parent element
    *
    * Initializes all components and starts rendering.
-   * Requires a pre-loaded Ghostty instance passed to the constructor.
+   * If no Ghostty instance was provided to the constructor, this creates
+   * an isolated WASM instance (async). Returns a Promise in that case.
    */
-  open(parent: HTMLElement): void {
+  open(parent: HTMLElement): void | Promise<void> {
     if (this.isOpen) {
       throw new Error('Terminal is already open');
     }
@@ -460,6 +462,23 @@ export class Terminal implements ITerminalCore {
       throw new Error('Terminal has been disposed');
     }
 
+    if (this.ghostty) {
+      // Synchronous path: Ghostty instance was provided (test isolation or pre-created)
+      this.openWithGhostty(parent);
+      return;
+    }
+
+    // Async path: create an isolated WASM instance for this terminal
+    return createGhostty().then((ghostty) => {
+      this.ghostty = ghostty;
+      this.openWithGhostty(parent);
+    });
+  }
+
+  /**
+   * Internal: complete the open() sequence once a Ghostty instance is available.
+   */
+  private openWithGhostty(parent: HTMLElement): void {
     // Store parent element
     this.element = parent;
     this.isOpen = true;

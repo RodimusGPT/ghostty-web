@@ -38,10 +38,21 @@ export {
 
 /**
  * Main Ghostty WASM wrapper class
+ *
+ * Each Ghostty instance owns its own WebAssembly.Instance with isolated linear
+ * memory. This prevents cross-terminal data contamination when multiple
+ * terminals operate concurrently (e.g., simultaneous resize via FitAddon).
+ *
+ * The compiled WebAssembly.Module is shared across instances (it's immutable
+ * and stateless), so the per-instance cost is only the linear memory (~1 page
+ * initial, grows as needed).
  */
 export class Ghostty {
   private exports: GhosttyWasmExports;
   private memory: WebAssembly.Memory;
+
+  /** Cached compiled module — shared across all instances (immutable, no state) */
+  private static compiledModule: WebAssembly.Module | null = null;
 
   constructor(wasmInstance: WebAssembly.Instance) {
     this.exports = wasmInstance.exports as GhosttyWasmExports;
@@ -60,10 +71,59 @@ export class Ghostty {
     return new GhosttyTerminal(this.exports, this.memory, cols, rows, config);
   }
 
+  /**
+   * Load and compile the WASM module (first call), then instantiate.
+   * Each call returns a Ghostty with its own WASM instance and isolated memory.
+   * The compiled module is cached so only the first call pays the compilation cost.
+   */
   static async load(wasmPath?: string): Promise<Ghostty> {
-    // If explicit path provided, use it
+    // Compile the module once (if not already cached)
+    if (!Ghostty.compiledModule) {
+      Ghostty.compiledModule = await Ghostty.compileModule(wasmPath);
+    }
+
+    // Instantiate with isolated linear memory
+    return Ghostty.instantiateModule(Ghostty.compiledModule);
+  }
+
+  /**
+   * Compile the WASM module from bytes. Called once and cached.
+   */
+  private static async compileModule(wasmPath?: string): Promise<WebAssembly.Module> {
+    const wasmBytes = await Ghostty.loadWasmBytes(wasmPath);
+    return WebAssembly.compile(wasmBytes);
+  }
+
+  /**
+   * Create a new WASM instance from a compiled module.
+   * Each instance gets its own linear memory — no shared mutable state.
+   */
+  private static async instantiateModule(module: WebAssembly.Module): Promise<Ghostty> {
+    const wasmInstance = await WebAssembly.instantiate(module, {
+      env: {
+        log: (ptr: number, len: number) => {
+          const bytes = new Uint8Array(
+            (wasmInstance.exports as GhosttyWasmExports).memory.buffer,
+            ptr,
+            len
+          );
+          const msg = new TextDecoder().decode(bytes);
+          // Suppress noisy OSC warnings from TUI apps probing terminal capabilities
+          if (msg.includes('warning(osc)')) return;
+          console.log('[ghostty-vt]', msg);
+        },
+      },
+    });
+    return new Ghostty(wasmInstance);
+  }
+
+  /**
+   * Load WASM bytes from disk or network. Tries multiple strategies.
+   */
+  private static async loadWasmBytes(wasmPath?: string): Promise<ArrayBuffer> {
+    // If explicit path provided, load from that path
     if (wasmPath) {
-      return Ghostty.loadFromPath(wasmPath);
+      return Ghostty.loadBytesFromPath(wasmPath);
     }
 
     // Resolve path relative to this module
@@ -88,7 +148,7 @@ export class Ghostty {
     let lastError: Error | null = null;
     for (const path of defaultPaths) {
       try {
-        return await Ghostty.loadFromPath(path);
+        return await Ghostty.loadBytesFromPath(path);
       } catch (e) {
         lastError = e instanceof Error ? e : new Error(String(e));
       }
@@ -96,7 +156,7 @@ export class Ghostty {
     throw lastError || new Error('Failed to load Ghostty WASM');
   }
 
-  private static async loadFromPath(path: string): Promise<Ghostty> {
+  private static async loadBytesFromPath(path: string): Promise<ArrayBuffer> {
     let wasmBytes: ArrayBuffer | undefined;
 
     // Try Bun.file first (for Bun environments)
@@ -138,23 +198,7 @@ export class Ghostty {
       throw new Error(`Could not load WASM from path: ${path}`);
     }
 
-    const wasmModule = await WebAssembly.compile(wasmBytes);
-    const wasmInstance = await WebAssembly.instantiate(wasmModule, {
-      env: {
-        log: (ptr: number, len: number) => {
-          const bytes = new Uint8Array(
-            (wasmInstance.exports as GhosttyWasmExports).memory.buffer,
-            ptr,
-            len
-          );
-          const msg = new TextDecoder().decode(bytes);
-          // Suppress noisy OSC warnings from TUI apps probing terminal capabilities
-          if (msg.includes('warning(osc)')) return;
-          console.log('[ghostty-vt]', msg);
-        },
-      },
-    });
-    return new Ghostty(wasmInstance);
+    return wasmBytes;
   }
 }
 
@@ -855,8 +899,7 @@ export class GhosttyTerminal {
     }
   }
 
-  /** Small buffer for grapheme lookups (reused to avoid allocation) */
-  private graphemeBuffer: Uint32Array | null = null;
+  /** WASM pointer for grapheme lookups (reused to avoid allocation) */
   private graphemeBufferPtr: number = 0;
 
   /**
@@ -866,10 +909,9 @@ export class GhosttyTerminal {
    * @returns Array of codepoints, or null on error
    */
   getGrapheme(row: number, col: number): number[] | null {
-    // Allocate buffer on first use (16 codepoints should be enough for any grapheme)
-    if (!this.graphemeBuffer) {
+    // Allocate WASM buffer on first use (16 codepoints should be enough for any grapheme)
+    if (!this.graphemeBufferPtr) {
       this.graphemeBufferPtr = this.exports.ghostty_wasm_alloc_u8_array(16 * 4);
-      this.graphemeBuffer = new Uint32Array(this.memory.buffer, this.graphemeBufferPtr, 16);
     }
 
     const count = this.exports.ghostty_render_state_get_grapheme(
@@ -882,7 +924,8 @@ export class GhosttyTerminal {
 
     if (count < 0) return null;
 
-    // Re-create view in case memory grew
+    // Always create a fresh view — memory.buffer may have been replaced by
+    // memory.grow() triggered by another terminal's resize/write.
     const view = new Uint32Array(this.memory.buffer, this.graphemeBufferPtr, count);
     return Array.from(view);
   }
@@ -928,10 +971,9 @@ export class GhosttyTerminal {
    * @returns Array of codepoints, or null on error
    */
   getScrollbackGrapheme(offset: number, col: number): number[] | null {
-    // Reuse the same buffer as getGrapheme
-    if (!this.graphemeBuffer) {
+    // Reuse the same WASM buffer as getGrapheme
+    if (!this.graphemeBufferPtr) {
       this.graphemeBufferPtr = this.exports.ghostty_wasm_alloc_u8_array(16 * 4);
-      this.graphemeBuffer = new Uint32Array(this.memory.buffer, this.graphemeBufferPtr, 16);
     }
 
     const count = this.exports.ghostty_terminal_get_scrollback_grapheme(
@@ -968,6 +1010,5 @@ export class GhosttyTerminal {
       this.exports.ghostty_wasm_free_u8_array(this.graphemeBufferPtr, 16 * 4);
       this.graphemeBufferPtr = 0;
     }
-    this.graphemeBuffer = null;
   }
 }
