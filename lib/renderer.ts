@@ -152,6 +152,10 @@ export class CanvasRenderer implements IRenderer {
   private cursorBlinkInterval?: number;
   private lastCursorPosition: { x: number; y: number } = { x: 0, y: 0 };
 
+  // Terminal dimensions (set by resize(), used by render())
+  private cols: number = 0;
+  private rows: number = 0;
+
   // Viewport tracking (for scrolling)
   private lastViewportY: number = 0;
 
@@ -286,6 +290,9 @@ export class CanvasRenderer implements IRenderer {
    * Resize canvas to fit terminal dimensions
    */
   public resize(cols: number, rows: number): void {
+    this.cols = cols;
+    this.rows = rows;
+
     const cssWidth = cols * this.metrics.width;
     const cssHeight = rows * this.metrics.height;
 
@@ -331,22 +338,19 @@ export class CanvasRenderer implements IRenderer {
     // getCursor() calls update() internally to ensure fresh state.
     // Multiple update() calls are safe - dirty state persists until clearDirty().
     const cursor = buffer.getCursor();
-    const dims = buffer.getDimensions();
     const scrollbackLength = scrollbackProvider ? scrollbackProvider.getScrollbackLength() : 0;
+
+    // Use renderer-owned cols/rows (set by Terminal.resize() → renderer.resize())
+    // instead of WASM getDimensions() which can return stale values after
+    // React strict-mode remounts. Fall back to buffer dimensions only if
+    // resize() hasn't been called yet (e.g., in tests).
+    const dims = this.cols > 0 && this.rows > 0
+      ? { cols: this.cols, rows: this.rows }
+      : buffer.getDimensions();
 
     // Check if buffer needs full redraw (e.g., screen change between normal/alternate)
     if (buffer.needsFullRedraw?.()) {
       forceAll = true;
-    }
-
-    // Resize canvas if dimensions changed
-    const needsResize =
-      this.canvas.width !== dims.cols * this.metrics.width * this.devicePixelRatio ||
-      this.canvas.height !== dims.rows * this.metrics.height * this.devicePixelRatio;
-
-    if (needsResize) {
-      this.resize(dims.cols, dims.rows);
-      forceAll = true; // Force full render after resize
     }
 
     // Force re-render when viewport changes (scrolling)

@@ -40,6 +40,10 @@ export class WebglRenderer implements IRenderer {
   private devicePixelRatio: number;
   private metrics: FontMetrics;
 
+  // Terminal dimensions (set by resize(), used by render())
+  private cols = 0;
+  private rows = 0;
+
   private selectionManager?: SelectionManager;
   private hoveredHyperlinkId = 0;
   private hoveredLinkRange: {
@@ -138,18 +142,16 @@ export class WebglRenderer implements IRenderer {
   ): void {
     const gl = this.gl;
     const cursor = buffer.getCursor();
-    const dims = buffer.getDimensions();
+
+    // Use renderer-owned cols/rows (set by Terminal.resize() → renderer.resize())
+    // instead of WASM getDimensions() which can return stale values after
+    // React strict-mode remounts. Fall back to buffer dimensions only if
+    // resize() hasn't been called yet.
+    const dims = this.cols > 0 && this.rows > 0
+      ? { cols: this.cols, rows: this.rows }
+      : buffer.getDimensions();
     const cols = dims.cols;
     const rows = dims.rows;
-
-    // Resize if needed
-    const needsResize =
-      this.canvas.width !== cols * this.metrics.width * this.devicePixelRatio ||
-      this.canvas.height !== rows * this.metrics.height * this.devicePixelRatio;
-    if (needsResize) {
-      this.resize(cols, rows);
-      forceAll = true;
-    }
 
     if (buffer.needsFullRedraw?.()) forceAll = true;
 
@@ -493,6 +495,9 @@ export class WebglRenderer implements IRenderer {
   }
 
   resize(cols: number, rows: number): void {
+    this.cols = cols;
+    this.rows = rows;
+
     const cssWidth = cols * this.metrics.width;
     const cssHeight = rows * this.metrics.height;
     this.canvas.width = cssWidth * this.devicePixelRatio;
