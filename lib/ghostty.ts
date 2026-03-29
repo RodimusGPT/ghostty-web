@@ -393,6 +393,7 @@ export class GhosttyTerminal {
   // ==========================================================================
 
   write(data: string | Uint8Array): void {
+    if (!this.handle) return;
     const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : data;
     const ptr = this.exports.ghostty_wasm_alloc_u8_array(bytes.length);
     new Uint8Array(this.memory.buffer).set(bytes, ptr);
@@ -407,6 +408,13 @@ export class GhosttyTerminal {
     this.exports.ghostty_terminal_resize(this.handle, cols, rows);
     this.invalidateBuffers();
     this.initCellPool();
+
+    // Zero-initialize the resized cell buffer. The WASM allocator may hand back
+    // memory that contains stale cell data from a previous allocation (freed
+    // terminal or prior grid size). Without this, the renderer reads garbage
+    // codepoints (sequential WASM heap addresses interpreted as Unicode).
+    // Same rationale as the clear in the constructor.
+    this.write('\x1b[2J\x1b[3J\x1b[H');
   }
 
   /**
@@ -464,6 +472,7 @@ export class GhosttyTerminal {
    * Safe to call multiple times - dirty state persists until markClean().
    */
   update(): DirtyState {
+    if (!this.handle) return DirtyState.NONE;
     return this.exports.ghostty_render_state_update(this.handle) as DirtyState;
   }
 
@@ -551,6 +560,7 @@ export class GhosttyTerminal {
    * Returns a reusable cell array (zero allocation after warmup).
    */
   getViewport(): GhosttyCell[] {
+    if (!this.handle) return this.cellPool;
     const totalCells = this._cols * this._rows;
     const neededSize = totalCells * GhosttyTerminal.CELL_SIZE;
 
@@ -587,7 +597,7 @@ export class GhosttyTerminal {
    * Returns a COPY of the cells to avoid pool reference issues.
    */
   getLine(y: number): GhosttyCell[] | null {
-    if (y < 0 || y >= this._rows) return null;
+    if (!this.handle || y < 0 || y >= this._rows) return null;
     // Call update() to ensure render state is fresh.
     // This is safe to call multiple times - dirty state persists until markClean().
     this.update();

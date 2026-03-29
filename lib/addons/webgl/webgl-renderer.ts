@@ -324,8 +324,9 @@ export class WebglRenderer implements IRenderer {
           }
         }
 
-        // Skip empty/space for text rendering
-        if (cell.codepoint === 0 || cell.codepoint === 32) continue;
+        // Skip empty/space for text rendering, and guard against invalid
+        // codepoints from stale/uninitialized WASM memory
+        if (cell.codepoint === 0 || cell.codepoint === 32 || cell.codepoint > 0x10ffff) continue;
 
         let char: string;
         if (cell.grapheme_len > 0 && buffer.getGraphemeString) {

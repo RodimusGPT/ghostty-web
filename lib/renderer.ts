@@ -691,6 +691,13 @@ export class CanvasRenderer implements IRenderer {
     // Draw text (or custom block element rendering)
     const cp = cell.codepoint;
 
+    // Guard against invalid codepoints from stale/uninitialized WASM memory.
+    // Valid Unicode is 0x0000–0x10FFFF. Anything outside is garbage from the
+    // WASM heap (e.g., freed cell buffers reused by the allocator).
+    if (cp > 0x10ffff) {
+      return;
+    }
+
     // Block elements (U+2580–U+259F): render as pixel-perfect rectangles
     // instead of font glyphs to avoid anti-aliasing gaps between cells
     if (cp >= 0x2580 && cp <= 0x259f) {
