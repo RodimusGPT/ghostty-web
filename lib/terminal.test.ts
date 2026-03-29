@@ -2945,13 +2945,14 @@ describe('Synchronous open()', () => {
     }
   });
 
-  test('open() returns void (synchronous)', async () => {
+  test('open() returns a Promise', async () => {
     if (!container) return;
 
     const term = await createIsolatedTerminal();
     const result = term.open(container);
 
-    expect(result).toBeUndefined();
+    expect(result).toBeInstanceOf(Promise);
+    await result;
 
     term.dispose();
   });
@@ -2960,7 +2961,7 @@ describe('Synchronous open()', () => {
     if (!container) return;
 
     const term = await createIsolatedTerminal();
-    term.open(container);
+    await term.open(container);
 
     expect(term.element).toBe(container);
 

@@ -328,15 +328,8 @@ export class Terminal implements ITerminalCore {
       this.selectionManager.clearSelection();
     }
 
-    // Resize canvas to match new font metrics
+    // Resize canvas to match new font metrics (handles DPR-scaled dimensions)
     this.renderer.resize(this.cols, this.rows);
-
-    // Update canvas element dimensions to match renderer
-    const metrics = this.renderer.getMetrics();
-    this.canvas.width = metrics.width * this.cols;
-    this.canvas.height = metrics.height * this.rows;
-    this.canvas.style.width = '100%';
-    this.canvas.style.height = '100%';
 
     // Force full re-render with new font
     this.renderer.render(this.wasmTerm, true, this.viewportY, this);
@@ -454,7 +447,7 @@ export class Terminal implements ITerminalCore {
    * If no Ghostty instance was provided to the constructor, this creates
    * an isolated WASM instance (async). Returns a Promise in that case.
    */
-  open(parent: HTMLElement): void | Promise<void> {
+  async open(parent: HTMLElement): Promise<void> {
     if (this.isOpen) {
       throw new Error('Terminal is already open');
     }
@@ -462,17 +455,12 @@ export class Terminal implements ITerminalCore {
       throw new Error('Terminal has been disposed');
     }
 
-    if (this.ghostty) {
-      // Synchronous path: Ghostty instance was provided (test isolation or pre-created)
-      this.openWithGhostty(parent);
-      return;
+    if (!this.ghostty) {
+      // Create an isolated WASM instance for this terminal
+      this.ghostty = await createGhostty();
     }
 
-    // Async path: create an isolated WASM instance for this terminal
-    return createGhostty().then((ghostty) => {
-      this.ghostty = ghostty;
-      this.openWithGhostty(parent);
-    });
+    this.openWithGhostty(parent);
   }
 
   /**
@@ -876,15 +864,8 @@ export class Terminal implements ITerminalCore {
       // Resize WASM terminal (may reallocate buffers, invalidating TypedArray views)
       this.wasmTerm!.resize(cols, rows);
 
-      // Resize renderer
+      // Resize renderer (handles DPR-scaled canvas dimensions + context transform)
       this.renderer!.resize(cols, rows);
-
-      // Update canvas dimensions
-      const metrics = this.renderer!.getMetrics();
-      this.canvas!.width = metrics.width * cols;
-      this.canvas!.height = metrics.height * rows;
-      this.canvas!.style.width = '100%';
-      this.canvas!.style.height = '100%';
 
       // Fire resize event
       this.resizeEmitter.fire({ cols, rows });
