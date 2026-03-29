@@ -566,6 +566,13 @@ export class GhosttyTerminal {
       this.viewportBufferSize = neededSize;
     }
 
+    // Zero the buffer before WASM fills it. After resize() or dispose(), the
+    // WASM render state may write fewer cells than expected or write cells from
+    // a freshly allocated (uninitialized) internal screen buffer. Pre-zeroing
+    // ensures any cells WASM doesn't properly initialize appear as empty spaces
+    // rather than garbage from stale heap data.
+    new Uint8Array(this.memory.buffer, this.viewportBufferPtr, neededSize).fill(0);
+
     // Get all cells in one call
     const count = this.exports.ghostty_render_state_get_viewport(
       this.handle,
@@ -674,6 +681,9 @@ export class GhosttyTerminal {
     // Call update() to ensure render state is fresh (needed for colors).
     // This is safe to call multiple times - dirty state persists until markClean().
     this.update();
+
+    // Pre-zero buffer (same rationale as getViewport)
+    new Uint8Array(this.memory.buffer, this.viewportBufferPtr, neededSize).fill(0);
 
     const count = this.exports.ghostty_terminal_get_scrollback_line(
       this.handle,
