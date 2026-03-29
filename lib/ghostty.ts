@@ -731,7 +731,9 @@ export class GhosttyTerminal {
     for (let i = 0; i < count; i++) {
       const cellOffset = i * GhosttyTerminal.CELL_SIZE;
       const width = u8[cellOffset + 11];
-      if (width > 2) {
+      const underlineStyle = u8[cellOffset + 15];
+      const graphemeLen = u8[cellOffset + 14];
+      if (width > 2 || underlineStyle > 5 || graphemeLen > 16) {
         cells.push({
           codepoint: 0, fg_r: 0, fg_g: 0, fg_b: 0,
           bg_r: 0, bg_g: 0, bg_b: 0, flags: 0, width: 1,
@@ -941,11 +943,17 @@ export class GhosttyTerminal {
       // Garbage codepoints can fall within valid Unicode range (e.g., U+109BC),
       // so codepoint-range checks alone are insufficient.
       //
-      // Use structural validation: valid cells have width 0 (wide-char
-      // continuation), 1 (normal), or 2 (wide char). Random heap data has
-      // a 253/256 chance of having width > 2, making this a reliable detector.
+      // Multi-field structural validation: a valid cell must satisfy ALL of:
+      //   - width: 0 (wide-char continuation), 1 (normal), or 2 (wide)
+      //   - underline_style: 0–5 (none, single, double, curly, dotted, dashed)
+      //   - grapheme_len: 0–16 (no grapheme cluster exceeds ~15 codepoints)
+      //
+      // Random heap data has only a ~0.002% chance of passing all three checks,
+      // reducing visible garbage from ~23 cells/screen to effectively zero.
       const width = u8[offset + 11];
-      if (width > 2) {
+      const underlineStyle = u8[offset + 15];
+      const graphemeLen = u8[offset + 14];
+      if (width > 2 || underlineStyle > 5 || graphemeLen > 16) {
         cell.codepoint = 0;
         cell.fg_r = 0;
         cell.fg_g = 0;
