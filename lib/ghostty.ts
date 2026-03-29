@@ -408,13 +408,6 @@ export class GhosttyTerminal {
     this.exports.ghostty_terminal_resize(this.handle, cols, rows);
     this.invalidateBuffers();
     this.initCellPool();
-
-    // Zero-initialize the resized cell buffer. The WASM allocator may hand back
-    // memory that contains stale cell data from a previous allocation (freed
-    // terminal or prior grid size). Without this, the renderer reads garbage
-    // codepoints (sequential WASM heap addresses interpreted as Unicode).
-    // Same rationale as the clear in the constructor.
-    this.write('\x1b[2J\x1b[3J\x1b[H');
   }
 
   /**
@@ -699,8 +692,9 @@ export class GhosttyTerminal {
 
     for (let i = 0; i < count; i++) {
       const cellOffset = i * GhosttyTerminal.CELL_SIZE;
+      const cp = view.getUint32(cellOffset, true);
       cells.push({
-        codepoint: view.getUint32(cellOffset, true),
+        codepoint: cp <= 0x10ffff ? cp : 0,
         fg_r: u8[cellOffset + 4],
         fg_g: u8[cellOffset + 5],
         fg_b: u8[cellOffset + 6],
@@ -894,7 +888,11 @@ export class GhosttyTerminal {
     for (let i = 0; i < count; i++) {
       const offset = i * GhosttyTerminal.CELL_SIZE;
       const cell = this.cellPool[i];
-      cell.codepoint = view.getUint32(offset, true);
+      // Clamp invalid codepoints from stale/uninitialized WASM memory.
+      // After resize(), the WASM allocator may reuse freed regions that contain
+      // garbage uint32 values far beyond the Unicode range (0x0–0x10FFFF).
+      const cp = view.getUint32(offset, true);
+      cell.codepoint = cp <= 0x10ffff ? cp : 0;
       cell.fg_r = u8[offset + 4];
       cell.fg_g = u8[offset + 5];
       cell.fg_b = u8[offset + 6];
@@ -904,8 +902,8 @@ export class GhosttyTerminal {
       cell.flags = u8[offset + 10];
       cell.width = u8[offset + 11];
       cell.hyperlink_id = view.getUint16(offset + 12, true);
-      cell.grapheme_len = u8[offset + 14]; // grapheme_len is at byte 14
-      cell.underline_style = u8[offset + 15]; // underline_style is at byte 15
+      cell.grapheme_len = u8[offset + 14];
+      cell.underline_style = u8[offset + 15];
     }
   }
 
