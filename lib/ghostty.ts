@@ -692,6 +692,15 @@ export class GhosttyTerminal {
 
     for (let i = 0; i < count; i++) {
       const cellOffset = i * GhosttyTerminal.CELL_SIZE;
+      const width = u8[cellOffset + 11];
+      if (width > 2) {
+        cells.push({
+          codepoint: 0, fg_r: 0, fg_g: 0, fg_b: 0,
+          bg_r: 0, bg_g: 0, bg_b: 0, flags: 0, width: 1,
+          hyperlink_id: 0, grapheme_len: 0, underline_style: 0,
+        });
+        continue;
+      }
       const cp = view.getUint32(cellOffset, true);
       cells.push({
         codepoint: cp <= 0x10ffff ? cp : 0,
@@ -702,7 +711,7 @@ export class GhosttyTerminal {
         bg_g: u8[cellOffset + 8],
         bg_b: u8[cellOffset + 9],
         flags: u8[cellOffset + 10],
-        width: u8[cellOffset + 11],
+        width,
         hyperlink_id: view.getUint16(cellOffset + 12, true),
         grapheme_len: u8[cellOffset + 14],
         underline_style: u8[cellOffset + 15],
@@ -888,9 +897,32 @@ export class GhosttyTerminal {
     for (let i = 0; i < count; i++) {
       const offset = i * GhosttyTerminal.CELL_SIZE;
       const cell = this.cellPool[i];
-      // Clamp invalid codepoints from stale/uninitialized WASM memory.
-      // After resize(), the WASM allocator may reuse freed regions that contain
-      // garbage uint32 values far beyond the Unicode range (0x0–0x10FFFF).
+
+      // Detect garbage cells from stale/uninitialized WASM memory.
+      // After resize() or dispose(), the WASM allocator may reuse freed regions.
+      // Garbage codepoints can fall within valid Unicode range (e.g., U+109BC),
+      // so codepoint-range checks alone are insufficient.
+      //
+      // Use structural validation: valid cells have width 0 (wide-char
+      // continuation), 1 (normal), or 2 (wide char). Random heap data has
+      // a 253/256 chance of having width > 2, making this a reliable detector.
+      const width = u8[offset + 11];
+      if (width > 2) {
+        cell.codepoint = 0;
+        cell.fg_r = 0;
+        cell.fg_g = 0;
+        cell.fg_b = 0;
+        cell.bg_r = 0;
+        cell.bg_g = 0;
+        cell.bg_b = 0;
+        cell.flags = 0;
+        cell.width = 1;
+        cell.hyperlink_id = 0;
+        cell.grapheme_len = 0;
+        cell.underline_style = 0;
+        continue;
+      }
+
       const cp = view.getUint32(offset, true);
       cell.codepoint = cp <= 0x10ffff ? cp : 0;
       cell.fg_r = u8[offset + 4];
@@ -900,7 +932,7 @@ export class GhosttyTerminal {
       cell.bg_g = u8[offset + 8];
       cell.bg_b = u8[offset + 9];
       cell.flags = u8[offset + 10];
-      cell.width = u8[offset + 11];
+      cell.width = width;
       cell.hyperlink_id = view.getUint16(offset + 12, true);
       cell.grapheme_len = u8[offset + 14];
       cell.underline_style = u8[offset + 15];
