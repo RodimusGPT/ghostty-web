@@ -342,11 +342,14 @@ export class CanvasRenderer implements IRenderer {
 
     // Use renderer-owned cols/rows (set by Terminal.resize() → renderer.resize())
     // instead of WASM getDimensions() which can return stale values after
-    // React strict-mode remounts. Fall back to buffer dimensions only if
-    // resize() hasn't been called yet (e.g., in tests).
-    const dims = this.cols > 0 && this.rows > 0
-      ? { cols: this.cols, rows: this.rows }
-      : buffer.getDimensions();
+    // React strict-mode remounts. Never fall back to buffer.getDimensions()
+    // as that is the source of the stale-dimension bug (#13).
+    const dims = { cols: this.cols, rows: this.rows };
+
+    // Nothing to render if resize() hasn't been called yet
+    if (dims.cols === 0 || dims.rows === 0) {
+      return;
+    }
 
     // Check if buffer needs full redraw (e.g., screen change between normal/alternate)
     if (buffer.needsFullRedraw?.()) {

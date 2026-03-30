@@ -460,6 +460,14 @@ export class Terminal implements ITerminalCore {
       this.ghostty = await createGhostty();
     }
 
+    // Re-check after await — dispose() may have been called while we were
+    // waiting for WASM compilation (e.g., React strict-mode unmount/remount).
+    // Without this guard, a "zombie" terminal would create DOM elements and
+    // start a render loop on a disposed instance.
+    if (this.isDisposed) {
+      return;
+    }
+
     this.openWithGhostty(parent);
   }
 

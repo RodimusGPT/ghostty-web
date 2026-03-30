@@ -119,10 +119,13 @@ export class FitAddon implements ITerminalAddon {
         terminal.resize(dims.cols, dims.rows);
       }
     } finally {
-      // Clear flag after a short delay to allow DOM to settle
+      // Clear flag after the ResizeObserver debounce window (RESIZE_DEBOUNCE_MS)
+      // plus margin. The old 50ms value left a gap where the ResizeObserver
+      // callback (debounced at 100ms) could read stale layout and trigger
+      // a second resize with wrong dimensions.
       setTimeout(() => {
         this._isResizing = false;
-      }, 50);
+      }, RESIZE_DEBOUNCE_MS + 50);
     }
   }
 

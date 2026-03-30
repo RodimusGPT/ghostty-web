@@ -145,13 +145,14 @@ export class WebglRenderer implements IRenderer {
 
     // Use renderer-owned cols/rows (set by Terminal.resize() → renderer.resize())
     // instead of WASM getDimensions() which can return stale values after
-    // React strict-mode remounts. Fall back to buffer dimensions only if
-    // resize() hasn't been called yet.
-    const dims = this.cols > 0 && this.rows > 0
-      ? { cols: this.cols, rows: this.rows }
-      : buffer.getDimensions();
-    const cols = dims.cols;
-    const rows = dims.rows;
+    // React strict-mode remounts.
+    const cols = this.cols;
+    const rows = this.rows;
+
+    // Nothing to render if resize() hasn't been called yet
+    if (cols === 0 || rows === 0) {
+      return;
+    }
 
     if (buffer.needsFullRedraw?.()) forceAll = true;
 
@@ -370,8 +371,8 @@ export class WebglRenderer implements IRenderer {
       gl.useProgram(this.bgProgram);
       gl.uniform2f(
         gl.getUniformLocation(this.bgProgram, 'u_cellSize'),
-        2.0 / dims.cols,
-        2.0 / dims.rows
+        2.0 / cols,
+        2.0 / rows
       );
 
       gl.bindVertexArray(this.bgVAO);
@@ -400,8 +401,8 @@ export class WebglRenderer implements IRenderer {
       gl.useProgram(this.fgProgram);
       gl.uniform2f(
         gl.getUniformLocation(this.fgProgram, 'u_cellSize'),
-        2.0 / dims.cols,
-        2.0 / dims.rows
+        2.0 / cols,
+        2.0 / rows
       );
       gl.uniform2f(
         gl.getUniformLocation(this.fgProgram, 'u_atlasSize'),
@@ -450,12 +451,12 @@ export class WebglRenderer implements IRenderer {
       gl.useProgram(this.lineProgram);
       gl.uniform2f(
         gl.getUniformLocation(this.lineProgram, 'u_cellSize'),
-        2.0 / dims.cols,
-        2.0 / dims.rows
+        2.0 / cols,
+        2.0 / rows
       );
       gl.uniform1f(
         gl.getUniformLocation(this.lineProgram, 'u_lineWidth'),
-        (1.0 / (dims.rows * this.metrics.height)) * 2.0
+        (1.0 / (rows * this.metrics.height)) * 2.0
       );
 
       gl.bindVertexArray(this.lineVAO);
@@ -487,7 +488,7 @@ export class WebglRenderer implements IRenderer {
 
     // Cursor rendering
     if (viewportY === 0 && cursor.visible && this.cursorVisible) {
-      this.renderCursor(cursor.x, cursor.y, dims.cols, dims.rows);
+      this.renderCursor(cursor.x, cursor.y, cols, rows);
     }
 
     this.lastCursorPosition = { x: cursor.x, y: cursor.y };

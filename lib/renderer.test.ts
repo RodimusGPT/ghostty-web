@@ -151,13 +151,17 @@ function createMockBuffer(
 
 function createRenderer(
   mock: ReturnType<typeof createRecordingCanvas>,
-  opts: Record<string, any> = {}
+  opts: Record<string, any> = {},
+  dims: { cols: number; rows: number } = { cols: 80, rows: 24 }
 ) {
-  return new CanvasRenderer(mock.canvas, {
+  const r = new CanvasRenderer(mock.canvas, {
     devicePixelRatio: 1,
     cursorBlink: false,
     ...opts,
   } as any);
+  // Renderer requires resize() before render() to set cols/rows
+  r.resize(dims.cols, dims.rows);
+  return r;
 }
 
 // ============================================================================
