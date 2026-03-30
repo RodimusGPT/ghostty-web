@@ -505,6 +505,16 @@ export class WebglRenderer implements IRenderer {
     this.canvas.height = cssHeight * this.devicePixelRatio;
     this.canvas.style.width = '100%';
     this.canvas.style.height = '100%';
+
+    // Setting canvas.width/height resizes the WebGL drawing buffer but does
+    // NOT update the viewport or clear the old framebuffer content. Without
+    // this, the previous render at the old dimensions remains visible
+    // underneath the new render, producing a "double image" artifact.
+    const gl = this.gl;
+    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    const bgColor = this.hexToRgb(this.theme.background);
+    gl.clearColor(bgColor[0], bgColor[1], bgColor[2], 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
   }
 
   remeasureFont(): void {
