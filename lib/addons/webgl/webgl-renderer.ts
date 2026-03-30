@@ -154,6 +154,15 @@ export class WebglRenderer implements IRenderer {
       return;
     }
 
+    // Clear framebuffer and update viewport BEFORE data collection.
+    // Without this, the stale previous frame remains in the drawing buffer
+    // while the (potentially slow) cell data loop runs, causing the browser
+    // to composite the old content as a ghost image underneath.
+    const bgColor = this.hexToRgb(this.theme.background);
+    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    gl.clearColor(bgColor[0], bgColor[1], bgColor[2], 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
     if (buffer.needsFullRedraw?.()) forceAll = true;
 
     // Collect cell data
@@ -359,12 +368,6 @@ export class WebglRenderer implements IRenderer {
 
     // Upload atlas if new glyphs were rasterized
     this.atlas.uploadIfDirty();
-
-    // Clear
-    const bgColor = this.hexToRgb(this.theme.background);
-    gl.clearColor(bgColor[0], bgColor[1], bgColor[2], 1.0);
-    gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
 
     // Draw backgrounds
     if (bgCount > 0) {
