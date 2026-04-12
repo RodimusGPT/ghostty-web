@@ -632,15 +632,15 @@ export class Terminal implements ITerminalCore {
           return this.wasmTerm?.getMode(mode, false) ?? false;
         },
         () => {
-          // Query kitty keyboard protocol flags (0 = legacy mode)
-          return this.wasmTerm?.getKittyFlags() ?? 0;
-        },
-        () => {
           // Handle Cmd+C copy - returns true if there was a selection to copy
           return this.copySelection();
         },
         this.textarea,
-        mouseConfig
+        mouseConfig,
+        () => {
+          // Query kitty keyboard protocol flags (0 = legacy mode)
+          return this.wasmTerm?.getKittyFlags() ?? 0;
+        }
       );
 
       // Apply macOptionIsMeta if set

@@ -219,10 +219,10 @@ export class InputHandler {
    * @param onKey - Optional callback for raw key events
    * @param customKeyEventHandler - Optional custom key event handler
    * @param getMode - Optional callback to query terminal mode state (for application cursor mode)
-   * @param getKittyFlags - Optional callback to query kitty keyboard protocol flags
    * @param onCopy - Optional callback to handle copy (Cmd+C/Ctrl+C with selection)
    * @param inputElement - Optional input element for beforeinput events
    * @param mouseConfig - Optional mouse tracking configuration
+   * @param getKittyFlags - Optional callback to query kitty keyboard protocol flags
    */
   constructor(
     ghostty: Ghostty,
@@ -232,10 +232,10 @@ export class InputHandler {
     onKey?: (keyEvent: IKeyEvent) => void,
     customKeyEventHandler?: (event: KeyboardEvent) => boolean,
     getMode?: (mode: number) => boolean,
-    getKittyFlags?: () => number,
     onCopy?: () => boolean,
     inputElement?: HTMLElement,
-    mouseConfig?: MouseTrackingConfig
+    mouseConfig?: MouseTrackingConfig,
+    getKittyFlags?: () => number
   ) {
     this.encoder = ghostty.createKeyEncoder();
     this.container = container;
