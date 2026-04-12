@@ -903,6 +903,21 @@ export class GhosttyTerminal {
     return this.exports.ghostty_terminal_get_mode(this.handle, mode, isAnsi) !== 0;
   }
 
+  /**
+   * Get the current kitty keyboard protocol flags.
+   * Returns 0 (DISABLED) if the WASM export is not available.
+   */
+  getKittyFlags(): number {
+    // The WASM binary may not have this export yet (requires rebuild with updated patch).
+    // Use a runtime check to gracefully fall back to legacy mode.
+    const fn = (this.exports as Record<string, unknown>)
+      .ghostty_terminal_get_kitty_keyboard_flags;
+    if (typeof fn !== 'function') {
+      return 0;
+    }
+    return (fn as (terminal: number) => number)(this.handle);
+  }
+
   // ==========================================================================
   // Private helpers
   // ==========================================================================

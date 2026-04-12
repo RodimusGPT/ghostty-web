@@ -636,7 +636,11 @@ export class Terminal implements ITerminalCore {
           return this.copySelection();
         },
         this.textarea,
-        mouseConfig
+        mouseConfig,
+        () => {
+          // Query kitty keyboard protocol flags (0 = legacy mode)
+          return this.wasmTerm?.getKittyFlags() ?? 0;
+        }
       );
 
       // Apply macOptionIsMeta if set

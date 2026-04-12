@@ -181,6 +181,7 @@ export class InputHandler {
   private onKeyCallback?: (keyEvent: IKeyEvent) => void;
   private customKeyEventHandler?: (event: KeyboardEvent) => boolean;
   private getModeCallback?: (mode: number) => boolean;
+  private getKittyFlagsCallback?: () => number;
   private onCopyCallback?: () => boolean;
   private mouseConfig?: MouseTrackingConfig;
   private keydownListener: ((e: KeyboardEvent) => void) | null = null;
@@ -221,6 +222,7 @@ export class InputHandler {
    * @param onCopy - Optional callback to handle copy (Cmd+C/Ctrl+C with selection)
    * @param inputElement - Optional input element for beforeinput events
    * @param mouseConfig - Optional mouse tracking configuration
+   * @param getKittyFlags - Optional callback to query kitty keyboard protocol flags
    */
   constructor(
     ghostty: Ghostty,
@@ -232,7 +234,8 @@ export class InputHandler {
     getMode?: (mode: number) => boolean,
     onCopy?: () => boolean,
     inputElement?: HTMLElement,
-    mouseConfig?: MouseTrackingConfig
+    mouseConfig?: MouseTrackingConfig,
+    getKittyFlags?: () => number
   ) {
     this.encoder = ghostty.createKeyEncoder();
     this.container = container;
@@ -242,6 +245,7 @@ export class InputHandler {
     this.onKeyCallback = onKey;
     this.customKeyEventHandler = customKeyEventHandler;
     this.getModeCallback = getMode;
+    this.getKittyFlagsCallback = getKittyFlags;
     this.onCopyCallback = onCopy;
     this.mouseConfig = mouseConfig;
 
@@ -433,15 +437,17 @@ export class InputHandler {
     // Extract modifiers
     const mods = this.extractModifiers(event);
 
+    // When kitty keyboard protocol is active, skip the fast-path and let
+    // the encoder handle all keys (e.g. Shift+Enter → CSI 13;2u).
+    const kittyActive = this.getKittyFlagsCallback ? this.getKittyFlagsCallback() > 0 : false;
+
     // Handle simple special keys that produce standard sequences
-    if (mods === Mods.NONE || mods === Mods.SHIFT) {
+    if (!kittyActive && (mods === Mods.NONE || mods === Mods.SHIFT)) {
       let simpleOutput: string | null = null;
 
       switch (key) {
         case Key.ENTER:
-          if (mods === Mods.NONE) {
-            simpleOutput = '\r'; // Carriage return (Shift+Enter goes to encoder for CSI u)
-          }
+          simpleOutput = '\r'; // Carriage return
           break;
         case Key.TAB:
           if (mods === Mods.SHIFT) {
@@ -535,6 +541,11 @@ export class InputHandler {
         this.encoder.setOption(KeyEncoderOption.CURSOR_KEY_APPLICATION, appCursorMode);
       }
 
+      // Sync kitty keyboard flags from the terminal
+      if (this.getKittyFlagsCallback) {
+        this.encoder.setKittyFlags(this.getKittyFlagsCallback());
+      }
+
       // For letter/number keys, even with modifiers, pass the base character
       // This helps the encoder produce correct control sequences (e.g., Ctrl+A = 0x01)
       // For special keys (Enter, Arrow keys, etc.), don't pass utf8
@@ -554,12 +565,12 @@ export class InputHandler {
       const decoder = new TextDecoder();
       const data = decoder.decode(encoded);
 
-      // Prevent default browser behavior
-      event.preventDefault();
-      event.stopPropagation();
-
-      // Emit the data
+      // Only prevent default and emit if the encoder produced output.
+      // When the encoder returns empty, let the event propagate so the
+      // beforeinput handler can serve as a fallback (e.g. insertLineBreak).
       if (data.length > 0) {
+        event.preventDefault();
+        event.stopPropagation();
         this.onDataCallback(data);
         this.recordKeyDownData(data);
       }

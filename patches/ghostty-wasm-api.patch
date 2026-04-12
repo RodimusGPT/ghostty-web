@@ -234,6 +234,12 @@ index 000000000..c467102c3
 + */
 +bool ghostty_terminal_get_mode(GhosttyTerminal term, int mode, bool is_ansi);
 +
++/**
++ * Get the current kitty keyboard protocol flags.
++ * @return Bitfield of active kitty keyboard flags (0 = disabled/legacy mode)
++ */
++int ghostty_terminal_get_kitty_keyboard_flags(GhosttyTerminal term);
++
 +/* ============================================================================
 + * Scrollback API
 + * ========================================================================= */
@@ -374,6 +380,7 @@ index 03a883e20..1336676d7 100644
 +        @export(&c.terminal_is_alternate_screen, .{ .name = "ghostty_terminal_is_alternate_screen" });
 +        @export(&c.terminal_has_mouse_tracking, .{ .name = "ghostty_terminal_has_mouse_tracking" });
 +        @export(&c.terminal_get_mode, .{ .name = "ghostty_terminal_get_mode" });
++        @export(&c.terminal_get_kitty_keyboard_flags, .{ .name = "ghostty_terminal_get_kitty_keyboard_flags" });
 +
 +        // Scrollback API
 +        @export(&c.terminal_get_scrollback_length, .{ .name = "ghostty_terminal_get_scrollback_length" });
@@ -436,6 +443,7 @@ index bc92597f5..d0ee49c1b 100644
 +pub const terminal_is_alternate_screen = terminal.isAlternateScreen;
 +pub const terminal_has_mouse_tracking = terminal.hasMouseTracking;
 +pub const terminal_get_mode = terminal.getMode;
++pub const terminal_get_kitty_keyboard_flags = terminal.getKittyKeyboardFlags;
 +
 +// Scrollback API
 +pub const terminal_get_scrollback_length = terminal.getScrollbackLength;
@@ -1350,6 +1358,13 @@ index 000000000..73ae2e6fa
 +    const wrapper: *const TerminalWrapper = @ptrCast(@alignCast(ptr orelse return false));
 +    const mode = modespkg.modeFromInt(@intCast(mode_num), is_ansi) orelse return false;
 +    return wrapper.terminal.modes.get(mode);
++}
++
++/// Get the current kitty keyboard protocol flags
++/// Returns the raw flags value from the kitty keyboard stack (0 = disabled)
++pub fn getKittyKeyboardFlags(ptr: ?*anyopaque) callconv(.c) c_int {
++    const wrapper: *const TerminalWrapper = @ptrCast(@alignCast(ptr orelse return 0));
++    return @intCast(wrapper.terminal.screens.active.kitty_keyboard.current());
 +}
 +
 +// ============================================================================
