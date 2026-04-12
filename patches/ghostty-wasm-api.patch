@@ -1364,7 +1364,7 @@ index 000000000..73ae2e6fa
 +/// Returns the raw flags value from the kitty keyboard stack (0 = disabled)
 +pub fn getKittyKeyboardFlags(ptr: ?*anyopaque) callconv(.c) c_int {
 +    const wrapper: *const TerminalWrapper = @ptrCast(@alignCast(ptr orelse return 0));
-+    return @intCast(wrapper.terminal.screens.active.kitty_keyboard.current());
++    return @intCast(@as(u5, @bitCast(wrapper.terminal.screens.active.kitty_keyboard.current())));
 +}
 +
 +// ============================================================================
