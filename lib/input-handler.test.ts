@@ -570,6 +570,39 @@ describe('InputHandler', () => {
       expect(dataReceived[0]).toBe('\r');
     });
 
+    test('encodes Shift+Enter as carriage return', () => {
+      const handler = new InputHandler(
+        ghostty,
+        container as any,
+        (data) => dataReceived.push(data),
+        () => {
+          bellCalled = true;
+        }
+      );
+
+      simulateKey(container, createKeyEvent('Enter', 'Enter', { shift: true }));
+
+      expect(dataReceived.length).toBe(1);
+      // Shift+Enter should produce \r in legacy mode (same as Enter)
+      expect(dataReceived[0]).toBe('\r');
+    });
+
+    test('Shift+Enter calls preventDefault', () => {
+      const handler = new InputHandler(
+        ghostty,
+        container as any,
+        (data) => dataReceived.push(data),
+        () => {
+          bellCalled = true;
+        }
+      );
+
+      const event = createKeyEvent('Enter', 'Enter', { shift: true });
+      simulateKey(container, event);
+
+      expect(event.preventDefault).toHaveBeenCalled();
+    });
+
     test('encodes Tab', () => {
       const handler = new InputHandler(
         ghostty,
@@ -925,6 +958,27 @@ describe('InputHandler', () => {
       simulateKey(container, event);
 
       expect(event.preventDefault).toHaveBeenCalled();
+    });
+
+    test('does not preventDefault when encoder produces empty output', () => {
+      const handler = new InputHandler(
+        ghostty,
+        container as any,
+        (data) => dataReceived.push(data),
+        () => {
+          bellCalled = true;
+        }
+      );
+
+      // Use a modifier combo that bypasses the fast-path (Ctrl+Shift)
+      // and may produce empty encoder output for a key without a legacy encoding
+      const event = createKeyEvent('Enter', 'Enter', { ctrl: true, shift: true });
+      simulateKey(container, event);
+
+      // If no data was produced, preventDefault should not have been called
+      if (dataReceived.length === 0) {
+        expect(event.preventDefault).not.toHaveBeenCalled();
+      }
     });
   });
 
